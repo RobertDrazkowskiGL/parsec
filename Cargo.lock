@@ -495,7 +495,7 @@ dependencies = [
 [[package]]
 name = "parsec-interface"
 version = "0.20.2"
-source = "git+https://github.com/parallaxsecond/parsec-interface-rs.git?rev=4986c0d6b4610237c85eb799fc469d1658c1a2f0#4986c0d6b4610237c85eb799fc469d1658c1a2f0"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/parsec-interface-rs.git?branch=calib-integration#5a65397ee3e8f081c21c8c85e6c5031500e6b0c5"
 dependencies = [
  "bincode",
  "derivative",
@@ -531,6 +531,7 @@ dependencies = [
  "pkcs11",
  "psa-crypto",
  "rand",
+ "rust-cryptoauthlib-sys",
  "sd-notify",
  "serde",
  "signal-hook",
@@ -820,6 +821,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "rust-cryptoauthlib-sys"
+version = "0.1.0"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib-sys.git#32956ba19d89bf5ac3077ff078a2a230733e5239"
+dependencies = [
+ "cmake",
 ]
 
 [[package]]
