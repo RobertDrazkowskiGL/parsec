@@ -66,6 +66,8 @@ pub enum ProviderConfig {
     CryptoAuthLib {
         /// Name of the Key Info Manager to use
         key_info_manager: String,
+        /// Name of the interface to use
+        interface: String,
     },
 }
 

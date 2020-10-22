@@ -5,37 +5,61 @@
 //! This provider is a hardware based implementation of PSA Crypto, Mbed Crypto.
 use super::Provide;
 use derivative::Derivative;
-use log::{error, trace};
+use log::trace;
+use std::collections::HashSet;
+use uuid::Uuid;
+
 use parsec_interface::operations::list_providers::ProviderInfo;
 
-use parsec_interface::operations::{
-    // More to come...
-//    psa_hash_compare, 
-    psa_hash_compute,
-};
+use parsec_interface::operations::psa_hash_compute;
 
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 
-use crate::operations::psa_algorithm::Hash;
+//use parsec_interface::operations::psa_algorithm::Hash;
 
-use rust_cryptoauthlib_sys;
+use rust_cryptoauthlib_sys::{
+    ATCADevice,
+    ATCAIfaceCfg,
+    cfg_ateccx08a_i2c_default,
+    cfg_ateccx08a_swi_default,
+    cfg_ateccx08a_kitcdc_default,
+    cfg_ateccx08a_kithid_default,
+    ATCA_STATUS_ATCA_SUCCESS,
+    atcab_init,
+    atcab_get_device,
+};
 
-const SUPPORTED_OPCODES: [Opcode; 2] = [
-//    Opcode::PsaHashCompare,
+mod hash;
+
+const SUPPORTED_OPCODES: [Opcode; 1] = [
     Opcode::PsaHashCompute,
 ];
 
+/// CryptoAuthLib provider structure
+#[derive(Derivative)]
+#[derivative(Debug, Copy, Clone)]
 pub struct Provider {
     device: ATCADevice,
 }
 
 impl Provider {
-    fn new(key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>) -> Option<Provider> {
-        if ATCA_SUCCESS != unsafe { atcab_init(&cfg_ateccx08a_i2c_default)} {
+    /// Creates and initialise a new instance of CryptoAuthLibProvider
+    // TODO - remove "pub" below. Implement ProviderBuilder.
+    pub fn new(interface : String) -> Option<Provider> {
+        let mut atca_iface_cfg : ATCAIfaceCfg = match interface.as_ref() {
+            "I2C"  => unsafe { cfg_ateccx08a_i2c_default },
+            "SWI"  => unsafe { cfg_ateccx08a_swi_default },
+            "UART" => unsafe { cfg_ateccx08a_kitcdc_default },
+            "HID"  => unsafe { cfg_ateccx08a_kithid_default },
+            _ => return None,
+        };
+        if ATCA_STATUS_ATCA_SUCCESS != unsafe { atcab_init(&mut atca_iface_cfg)} {
             return None;
         }
-        let cryptoauthlib_provider = new Provider;
-        cryptoauthlib_provider.device = unsafe { atcab_get_device() };
+        let device = unsafe { atcab_get_device() };
+        let cryptoauthlib_provider = Provider {
+            device,
+        };
         return Some(cryptoauthlib_provider);
     }
 }
