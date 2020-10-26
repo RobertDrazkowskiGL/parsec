@@ -826,7 +826,7 @@ dependencies = [
 [[package]]
 name = "rust-cryptoauthlib-sys"
 version = "0.1.0"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib-sys.git#32956ba19d89bf5ac3077ff078a2a230733e5239"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib-sys.git#9813e694a0dcf1c54dbf2ad2d770528d946a5bfc"
 dependencies = [
  "cmake",
 ]
