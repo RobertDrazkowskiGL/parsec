@@ -4,7 +4,7 @@ use super::Provider;
 use parsec_interface::operations::psa_algorithm::Hash;
 use parsec_interface::operations::psa_hash_compute;
 use parsec_interface::requests::{ResponseStatus, Result};
-use rust_cryptoauthlib_sys;
+use rust_cryptoauthlib;
 
 impl Provider {
     pub(super) fn psa_hash_compute_internal(
@@ -15,8 +15,8 @@ impl Provider {
         let message = op.input.as_ptr();
         match op.alg {
             Hash::Sha256 => {
-                match  unsafe { rust_cryptoauthlib_sys::atcab_sha(op.input.len() as u16, message, hash.as_mut_ptr()) } {
-                    rust_cryptoauthlib_sys::ATCA_STATUS_ATCA_SUCCESS => {
+                match  rust_cryptoauthlib::atcab_sha(op.input.len() as u16, message, hash.as_mut_ptr())  {
+                    rust_cryptoauthlib::AtcaStatus::AtcaSucccess => {
                         Ok(psa_hash_compute::Result { hash: hash.into() })
                     }
                     _ => {

@@ -168,6 +168,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cryptoauthlib-sys"
+version = "0.1.0"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git#a2d78bfed4a96cd11e80fa7230d81ca2c5695840"
+dependencies = [
+ "cmake",
+]
+
+[[package]]
 name = "derivative"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -531,7 +539,7 @@ dependencies = [
  "pkcs11",
  "psa-crypto",
  "rand",
- "rust-cryptoauthlib-sys",
+ "rust-cryptoauthlib",
  "sd-notify",
  "serde",
  "signal-hook",
@@ -824,11 +832,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-cryptoauthlib-sys"
+name = "rust-cryptoauthlib"
 version = "0.1.0"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib-sys.git#9813e694a0dcf1c54dbf2ad2d770528d946a5bfc"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git#a2d78bfed4a96cd11e80fa7230d81ca2c5695840"
 dependencies = [
- "cmake",
+ "cryptoauthlib-sys",
+ "strum_macros",
 ]
 
 [[package]]
@@ -972,6 +981,18 @@ checksum = "65e51c492f9e23a220534971ff5afc14037289de430e3c83f9daf6a1b6ae91e8"
 dependencies = [
  "heck",
  "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.19.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e61bb0be289045cb80bfce000512e32d09f8337e54c186725da381377ad1f8d5"
+dependencies = [
+ "heck",
  "proc-macro2",
  "quote",
  "syn",

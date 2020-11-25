@@ -42,10 +42,13 @@ use crate::providers::mbed_crypto::ProviderBuilder as MbedCryptoProviderBuilder;
 use crate::providers::pkcs11::ProviderBuilder as Pkcs11ProviderBuilder;
 #[cfg(feature = "tpm-provider")]
 use crate::providers::tpm::ProviderBuilder as TpmProviderBuilder;
+#[cfg(feature = "cryptoauthlib-provider")]
+use crate::providers::cryptoauthlib::ProviderBuilder as CryptoAuthLibProviderBuilder;
 #[cfg(any(
     feature = "mbed-crypto-provider",
     feature = "pkcs11-provider",
-    feature = "tpm-provider"
+    feature = "tpm-provider",
+    feature = "cryptoauthlib-provider"
 ))]
 use log::info;
 
@@ -270,7 +273,8 @@ fn build_providers(
     not(all(
         feature = "mbed-crypto-provider",
         feature = "pkcs11-provider",
-        feature = "tpm-provider"
+        feature = "tpm-provider",
+        feature = "cryptoauthlib-provider"
     )),
     allow(unused_variables),
     allow(clippy::match_single_binding)
@@ -323,10 +327,36 @@ unsafe fn get_provider(
                     .build()?,
             ))
         }
+        #[cfg(feature = "cryptoauthlib-provider")]
+        ProviderConfig::CryptoAuthLib {
+            device_type,
+            iface_type,
+            wake_delay,
+            rx_retries,
+            slave_address,
+            bus,
+            baud,
+            ..
+        } => {
+            info!("Creating a CryptoAuthentication Library Provider.");
+            Ok(Arc::new(
+                CryptoAuthLibProviderBuilder::new()
+                    .with_key_info_store(key_info_manager)
+                    .with_device_type(device_type)
+                    .with_iface_type(iface_type)
+                    .with_wake_delay(wake_delay)
+                    .with_rx_retries(rx_retries)
+                    .with_slave_address(slave_address)
+                    .with_bus(bus)
+                    .with_baud(baud)
+                    .build()?,
+            ))
+        }
         #[cfg(not(all(
             feature = "mbed-crypto-provider",
             feature = "pkcs11-provider",
-            feature = "tpm-provider"
+            feature = "tpm-provider",
+            feature = "cryptoauthlib-provider"
         )))]
         _ => {
             error!(

@@ -129,4 +129,18 @@ key_info_manager = "on-disk-manager"
 [[provider]]
 provider_type = "CryptoAuthLib"
 key_info_manager = "on-disk-manager"
-interface = "I2C"
+# (Required)
+device_type = "atecc508a"
+# (Required)
+iface_type = "i2c"
+# (Required)
+wake_delay = 1500
+# (Required)
+rx_retries = 20
+# (Optional - required for i2c) i2c slave addres
+slave_address = 0xc0
+# (Optional - required for i2c) i2c bus number
+# bus 2 was the default but bus 1 works with i2c-pseudo
+bus = 1
+# (Optional - required for i2c) i2c bus baud rate
+baud = 400000
