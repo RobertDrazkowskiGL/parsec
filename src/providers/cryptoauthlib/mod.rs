@@ -4,9 +4,14 @@
 //!
 //! This provider is a hardware based implementation of PSA Crypto, Mbed Crypto.
 use super::Provide;
+use crate::key_info_managers::ManageKeyInfo;
 use derivative::Derivative;
 use log::trace;
 use std::collections::HashSet;
+use std::io::{Error, ErrorKind};
+use std::sync::{
+    Arc,RwLock,
+};
 use uuid::Uuid;
 
 use parsec_interface::operations::list_providers::ProviderInfo;
@@ -40,10 +45,10 @@ impl Provider {
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
         ) -> Option<Provider> {
 
-        if rust_cryptoauthlib::AtcaStatus::AtcaSuccess != rust_cryptoauthlib::atcab_init(atca_iface) {
-            return None;
-        }
-        let device = rust_cryptoauthlib::atcab_get_device();
+        let device = match rust_cryptoauthlib::atcab_init(atca_iface) {
+            rust_cryptoauthlib::AtcaStatus::AtcaSuccess => rust_cryptoauthlib::atcab_get_device(),
+            _ => return None,
+        };
         let cryptoauthlib_provider = Provider {
              device,
         };
@@ -117,19 +122,19 @@ impl ProviderBuilder {
 
     /// Specify the ATECC device to be used
     pub fn with_device_type(mut self, device_type: String) -> ProviderBuilder {
-        self.device_type = match {
+        self.device_type = match device_type.as_str() {
             "atecc508a" | "atecc508a" => Some(device_type),
             _ => None,
-        }
+        };
 
         self
     }
 
     pub fn with_iface_type(mut self, iface_type: String) -> ProviderBuilder {
-        self.iface_type = match {
+        self.iface_type = match iface_type.as_str() {
             "i2c" => Some(iface_type),
             _ => None,
-        }
+        };
 
         self
     }
@@ -140,7 +145,7 @@ impl ProviderBuilder {
         self
     }
 
-    pub fn with_rx_retries(mut self, rx_retries: u16) -> ProviderBuilder {
+    pub fn with_rx_retries(mut self, rx_retries: i32) -> ProviderBuilder {
         self.rx_retries = Some(rx_retries);
 
         self
@@ -166,19 +171,26 @@ impl ProviderBuilder {
 
     /// Attempt to build CryptoAuthLib Provider
     pub fn build(self) -> std::io::Result<Provider> {
-        let atca_iface = rust_cryptoauthlib::atca_iface_setup(
-            Some(self.device_type),
-            Some(self.iface_type),
-            Some(self.wake_delay),
-            Some(self.rx_retries),
-            Some(self.slave_address),
-            Some(self.bus),
-            Some(self.baud),
+        let atca_iface = match rust_cryptoauthlib::atca_iface_setup(
+            self.device_type.unwrap_or("atecc608a".to_string()),
+            self.iface_type.unwrap_or("i2c".to_string()),
+            self.wake_delay.unwrap_or(1500),
+            self.rx_retries.unwrap_or(20),
+            Some(self.slave_address.unwrap_or(0xc0)),
+            Some(self.bus.unwrap_or(2)),
+            Some(self.baud.unwrap_or(400000)),
             None,
             None,
             None,
             None
-        );
+        ) {
+            Ok(x) => x,
+            Err(x) => return Err(Error::new(
+                ErrorKind::InvalidData,
+                "CryptoAuthLib inteface setup failed",
+            )),
+        };
+        
         Provider::new(
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
