@@ -32,7 +32,8 @@ const SUPPORTED_OPCODES: [Opcode; 1] = [
 
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
-#[derivative(Debug, Copy, Clone)]
+#[derivative(Debug,Clone)]
+// #[derivative(Debug, Copy, Clone)]
 pub struct Provider {
     device: rust_cryptoauthlib::AtcaDevice,
 }
@@ -41,7 +42,7 @@ impl Provider {
     /// Creates and initialise a new instance of CryptoAuthLibProvider
     // TODO - remove "pub" below. Implement ProviderBuilder.
     pub fn new(
-        key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
+        _key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
         ) -> Option<Provider> {
 
@@ -123,13 +124,14 @@ impl ProviderBuilder {
     /// Specify the ATECC device to be used
     pub fn with_device_type(mut self, device_type: String) -> ProviderBuilder {
         self.device_type = match device_type.as_str() {
-            "atecc508a" | "atecc508a" => Some(device_type),
+            "atecc508a" | "atecc608a" => Some(device_type),
             _ => None,
         };
 
         self
     }
 
+    /// Specify an interface type (expected: "i2c")
     pub fn with_iface_type(mut self, iface_type: String) -> ProviderBuilder {
         self.iface_type = match iface_type.as_str() {
             "i2c" => Some(iface_type),
@@ -139,30 +141,35 @@ impl ProviderBuilder {
         self
     }
 
+    /// Specify a wake delay
     pub fn with_wake_delay(mut self, wake_delay: u16) -> ProviderBuilder {
         self.wake_delay = Some(wake_delay);
 
         self
     }
 
+    /// Specify number of rx retries
     pub fn with_rx_retries(mut self, rx_retries: i32) -> ProviderBuilder {
         self.rx_retries = Some(rx_retries);
 
         self
     }
 
+    /// Specify i2c slave address of ATECC device
     pub fn with_slave_address(mut self, slave_address: u8) -> ProviderBuilder {
     self.slave_address = Some(slave_address);
 
     self
     }
 
+    /// Specify i2c bus for ATECC device
     pub fn with_bus(mut self, bus: u8) -> ProviderBuilder {
         self.bus = Some(bus);
 
         self
     }
 
+    /// Specify i2c baudrate
     pub fn with_baud(mut self, baud: u32) -> ProviderBuilder {
         self.baud = Some(baud);
 
@@ -185,7 +192,7 @@ impl ProviderBuilder {
             None
         ) {
             Ok(x) => x,
-            Err(x) => return Err(Error::new(
+            Err(_x) => return Err(Error::new(
                 ErrorKind::InvalidData,
                 "CryptoAuthLib inteface setup failed",
             )),
