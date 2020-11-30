@@ -36,14 +36,15 @@ use std::sync::RwLock;
 use std::time::Duration;
 use threadpool::{Builder as ThreadPoolBuilder, ThreadPool};
 
+#[cfg(feature = "cryptoauthlib-provider")]
+use crate::providers::cryptoauthlib::ProviderBuilder as CryptoAuthLibProviderBuilder;
 #[cfg(feature = "mbed-crypto-provider")]
 use crate::providers::mbed_crypto::ProviderBuilder as MbedCryptoProviderBuilder;
 #[cfg(feature = "pkcs11-provider")]
 use crate::providers::pkcs11::ProviderBuilder as Pkcs11ProviderBuilder;
 #[cfg(feature = "tpm-provider")]
 use crate::providers::tpm::ProviderBuilder as TpmProviderBuilder;
-#[cfg(feature = "cryptoauthlib-provider")]
-use crate::providers::cryptoauthlib::ProviderBuilder as CryptoAuthLibProviderBuilder;
+
 #[cfg(any(
     feature = "mbed-crypto-provider",
     feature = "pkcs11-provider",

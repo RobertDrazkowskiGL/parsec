@@ -15,7 +15,11 @@ impl Provider {
         let message = op.input.as_ptr();
         match op.alg {
             Hash::Sha256 => {
-                match  rust_cryptoauthlib::atcab_sha(op.input.len() as u16, message, hash.as_mut_ptr())  {
+                match rust_cryptoauthlib::atcab_sha(
+                    op.input.len() as u16,
+                    message,
+                    hash.as_mut_ptr(),
+                ) {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                         Ok(psa_hash_compute::Result { hash: hash.into() })
                     }

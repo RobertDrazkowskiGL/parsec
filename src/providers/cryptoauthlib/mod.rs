@@ -9,9 +9,7 @@ use derivative::Derivative;
 use log::trace;
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
-use std::sync::{
-    Arc,RwLock,
-};
+use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 use parsec_interface::operations::list_providers::ProviderInfo;
@@ -26,14 +24,11 @@ use rust_cryptoauthlib;
 
 mod hash;
 
-const SUPPORTED_OPCODES: [Opcode; 1] = [
-    Opcode::PsaHashCompute,
-];
+const SUPPORTED_OPCODES: [Opcode; 1] = [Opcode::PsaHashCompute];
 
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
-#[derivative(Debug,Clone)]
-// #[derivative(Debug, Copy, Clone)]
+#[derivative(Debug, Clone)]
 pub struct Provider {
     device: rust_cryptoauthlib::AtcaDevice,
 }
@@ -44,15 +39,12 @@ impl Provider {
     pub fn new(
         _key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
-        ) -> Option<Provider> {
-
+    ) -> Option<Provider> {
         let device = match rust_cryptoauthlib::atcab_init(atca_iface) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => rust_cryptoauthlib::atcab_get_device(),
             _ => return None,
         };
-        let cryptoauthlib_provider = Provider {
-             device,
-        };
+        let cryptoauthlib_provider = Provider { device };
         return Some(cryptoauthlib_provider);
     }
 }
@@ -71,14 +63,14 @@ impl Provide for Provider {
             id: ProviderID::CryptoAuthLib,
         }, SUPPORTED_OPCODES.iter().copied().collect()))
     }
-    
+
     fn psa_hash_compute(
         &self,
         op: psa_hash_compute::Operation,
     ) -> Result<psa_hash_compute::Result> {
         trace!("psa_hash_compute ingress");
         self.psa_hash_compute_internal(op)
-    }  
+    }
 }
 
 /// CryptoAuthentication Library Povider builder
@@ -157,9 +149,9 @@ impl ProviderBuilder {
 
     /// Specify i2c slave address of ATECC device
     pub fn with_slave_address(mut self, slave_address: u8) -> ProviderBuilder {
-    self.slave_address = Some(slave_address);
+        self.slave_address = Some(slave_address);
 
-    self
+        self
     }
 
     /// Specify i2c bus for ATECC device
@@ -189,15 +181,17 @@ impl ProviderBuilder {
             None,
             None,
             None,
-            None
+            None,
         ) {
             Ok(x) => x,
-            Err(_x) => return Err(Error::new(
-                ErrorKind::InvalidData,
-                "CryptoAuthLib inteface setup failed",
-            )),
+            Err(_x) => {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "CryptoAuthLib inteface setup failed",
+                ))
+            }
         };
-        
+
         Provider::new(
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
