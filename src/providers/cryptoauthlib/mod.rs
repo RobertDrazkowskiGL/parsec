@@ -13,14 +13,8 @@ use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 use parsec_interface::operations::list_providers::ProviderInfo;
-
 use parsec_interface::operations::psa_hash_compute;
-
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
-
-//use parsec_interface::operations::psa_algorithm::Hash;
-
-use rust_cryptoauthlib;
 
 mod hash;
 
@@ -45,7 +39,8 @@ impl Provider {
             _ => return None,
         };
         let cryptoauthlib_provider = Provider { device };
-        return Some(cryptoauthlib_provider);
+
+        Some(cryptoauthlib_provider)
     }
 }
 
@@ -171,8 +166,8 @@ impl ProviderBuilder {
     /// Attempt to build CryptoAuthLib Provider
     pub fn build(self) -> std::io::Result<Provider> {
         let atca_iface = match rust_cryptoauthlib::atca_iface_setup(
-            self.device_type.unwrap_or("atecc608a".to_string()),
-            self.iface_type.unwrap_or("i2c".to_string()),
+            self.device_type.unwrap_or_else(|| "atecc608a".to_string()),
+            self.iface_type.unwrap_or_else(|| "i2c".to_string()),
             self.wake_delay.unwrap_or(1500),
             self.rx_retries.unwrap_or(20),
             Some(self.slave_address.unwrap_or(0xc0)),

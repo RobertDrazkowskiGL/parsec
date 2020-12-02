@@ -4,7 +4,6 @@ use super::Provider;
 use parsec_interface::operations::psa_algorithm::Hash;
 use parsec_interface::operations::psa_hash_compute;
 use parsec_interface::requests::{ResponseStatus, Result};
-use rust_cryptoauthlib;
 
 impl Provider {
     pub(super) fn psa_hash_compute_internal(
