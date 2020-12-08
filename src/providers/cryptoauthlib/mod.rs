@@ -6,7 +6,6 @@
 use super::Provide;
 use crate::key_info_managers::ManageKeyInfo;
 use derivative::Derivative;
-use log::trace;
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
 use std::sync::{Arc, RwLock};
@@ -39,7 +38,6 @@ impl Provider {
             _ => return None,
         };
         let cryptoauthlib_provider = Provider { device };
-
         Some(cryptoauthlib_provider)
     }
 }
@@ -166,13 +164,26 @@ impl ProviderBuilder {
     /// Attempt to build CryptoAuthLib Provider
     pub fn build(self) -> std::io::Result<Provider> {
         let atca_iface = match rust_cryptoauthlib::atca_iface_setup(
-            self.device_type.unwrap_or_else(|| "atecc608a".to_string()),
-            self.iface_type.unwrap_or_else(|| "i2c".to_string()),
-            self.wake_delay.unwrap_or(1500),
-            self.rx_retries.unwrap_or(20),
-            Some(self.slave_address.unwrap_or(0xc0)),
-            Some(self.bus.unwrap_or(2)),
-            Some(self.baud.unwrap_or(400000)),
+            self.device_type
+                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc device type"))?,
+            self.iface_type
+                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc interface type"))?,
+            self.wake_delay
+                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc wake delay"))?,
+            self.rx_retries
+                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing rx retries number for atecc"))?,
+            Some(
+                self.slave_address
+                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc i2c slave address"))?,
+            ),
+            Some(
+                self.bus
+                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc i2c bus"))?,
+            ),
+            Some(
+                self.baud
+                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc i2c baud rate"))?,
+            ),
             None,
             None,
             None,
@@ -180,23 +191,28 @@ impl ProviderBuilder {
         ) {
             Ok(x) => x,
             Err(_x) => {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "CryptoAuthLib inteface setup failed",
-                ))
+                return Err(
+                    Error::new(
+                        ErrorKind::InvalidData,
+                        "CryptoAuthLib inteface setup failed",
+                    )
+                )
             }
         };
-
-        Provider::new(
+        let retval = Provider::new(
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
             atca_iface,
         )
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::InvalidData,
-                "CryptoAuthLib Provider initialization failed",
-            )
-        })
+        .ok_or_else(
+            || {
+                Error::new(
+                    ErrorKind::InvalidData,
+                    "CryptoAuthLib Provider initialization failed",
+                )
+            }
+        );
+
+        retval
     }
 }
