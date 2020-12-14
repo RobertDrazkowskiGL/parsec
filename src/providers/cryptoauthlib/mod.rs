@@ -67,7 +67,7 @@ impl Provide for Provider {
     }
 }
 
-/// CryptoAuthentication Library Povider builder
+/// CryptoAuthentication Library Provider builder
 #[derive(Default, Derivative)]
 #[derivative(Debug)]
 pub struct ProviderBuilder {

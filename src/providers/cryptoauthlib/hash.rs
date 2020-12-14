@@ -11,20 +11,19 @@ impl Provider {
         op: psa_hash_compute::Operation,
     ) -> Result<psa_hash_compute::Result> {
         let mut hash = vec![0u8; op.alg.hash_length()];
-        let message = op.input.as_ptr();
+        let message = op.input;
         match op.alg {
             Hash::Sha256 => {
                 match rust_cryptoauthlib::atcab_sha(
-                    op.input.len() as u16,
                     message,
-                    hash.as_mut_ptr(),
+                    hash,
                 ) {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                         Ok(psa_hash_compute::Result { hash: hash.into() })
                     }
-                    _ => {
+                    err => {
                         let error = ResponseStatus::PsaErrorGenericError;
-                        format_error!("Hash computation failed ", error);
+                        format_error!("Hash computation failed ", err);
                         Err(error)
                     }
                 }
