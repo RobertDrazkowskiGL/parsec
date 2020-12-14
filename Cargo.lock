@@ -163,8 +163,8 @@ dependencies = [
 
 [[package]]
 name = "cryptoauthlib-sys"
-version = "3.1.0"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git#98b01d108da08cfd5ec49a98c68930be2a08ab0a"
+version = "0.1.0"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git#a6146b77dc7beed9e30ee647aad2cc4a7f6a5113"
 dependencies = [
  "cmake",
 ]
@@ -497,7 +497,7 @@ dependencies = [
 [[package]]
 name = "parsec-interface"
 version = "0.20.2"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/parsec-interface-rs.git?branch=calib-integration#5a65397ee3e8f081c21c8c85e6c5031500e6b0c5"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/parsec-interface-rs.git?branch=calib-integration#d67c1955a51a6c58bbb332a148a36583b16ced75"
 dependencies = [
  "bincode",
  "derivative",
@@ -828,7 +828,7 @@ dependencies = [
 [[package]]
 name = "rust-cryptoauthlib"
 version = "0.1.0"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git#98b01d108da08cfd5ec49a98c68930be2a08ab0a"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git#a6146b77dc7beed9e30ee647aad2cc4a7f6a5113"
 dependencies = [
  "cryptoauthlib-sys",
  "strum_macros",

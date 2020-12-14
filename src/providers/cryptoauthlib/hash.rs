@@ -11,12 +11,12 @@ impl Provider {
         op: psa_hash_compute::Operation,
     ) -> Result<psa_hash_compute::Result> {
         let mut hash = vec![0u8; op.alg.hash_length()];
-        let message = op.input;
+        let message = op.input.to_vec();
         match op.alg {
             Hash::Sha256 => {
                 match rust_cryptoauthlib::atcab_sha(
                     message,
-                    hash,
+                    &mut hash,
                 ) {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                         Ok(psa_hash_compute::Result { hash: hash.into() })

@@ -200,7 +200,8 @@ impl ProviderBuilder {
                 )
             }
         };
-        let retval = Provider::new(
+
+        Provider::new(
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
             atca_iface,
@@ -212,8 +213,6 @@ impl ProviderBuilder {
                     "CryptoAuthLib Provider initialization failed",
                 )
             }
-        );
-
-        retval
+        )
     }
 }
