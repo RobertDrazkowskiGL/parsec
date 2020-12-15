@@ -164,55 +164,54 @@ impl ProviderBuilder {
 
     /// Attempt to build CryptoAuthLib Provider
     pub fn build(self) -> std::io::Result<Provider> {
-        let atca_iface = match rust_cryptoauthlib::atca_iface_setup(
-            self.device_type
-                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc device type"))?,
-            self.iface_type
-                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc interface type"))?,
-            self.wake_delay
-                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc wake delay"))?,
-            self.rx_retries
-                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing rx retries number for atecc"))?,
-            Some(
-                self.slave_address
-                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc i2c slave address"))?,
-            ),
-            Some(
-                self.bus
-                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc i2c bus"))?,
-            ),
-            Some(
-                self.baud
-                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing atecc i2c baud rate"))?,
-            ),
-            None,
-            None,
-            None,
-            None,
-        ) {
-            Ok(x) => x,
-            Err(_x) => {
-                return Err(
-                    Error::new(
-                        ErrorKind::InvalidData,
-                        "CryptoAuthLib inteface setup failed",
-                    )
-                )
-            }
+        let iface_type = match self.iface_type {
+            Some(x) => match x.as_str() {
+                "i2c" => rust_cryptoauthlib::atca_iface_setup_i2c(
+                    self.device_type.ok_or_else(|| {
+                        Error::new(ErrorKind::InvalidData, "missing atecc device type")
+                    })?,
+                    self.wake_delay.ok_or_else(|| {
+                        Error::new(ErrorKind::InvalidData, "missing atecc wake delay")
+                    })?,
+                    self.rx_retries.ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::InvalidData,
+                            "missing rx retries number for atecc",
+                        )
+                    })?,
+                    Some(self.slave_address.ok_or_else(|| {
+                        Error::new(ErrorKind::InvalidData, "missing atecc i2c slave address")
+                    })?),
+                    Some(self.bus.ok_or_else(|| {
+                        Error::new(ErrorKind::InvalidData, "missing atecc i2c bus")
+                    })?),
+                    Some(self.baud.ok_or_else(|| {
+                        Error::new(ErrorKind::InvalidData, "missing atecc i2c baud rate")
+                    })?),
+                ),
+                _ => return Err(Error::new(ErrorKind::InvalidData, "Unknown inteface type")),
+            },
+            None => return Err(Error::new(ErrorKind::InvalidData, "Missing inteface type")),
         };
 
         Provider::new(
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
-            atca_iface,
+            match iface_type {
+                Ok(x) => x,
+                Err(_x) => {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "CryptoAuthLib inteface setup failed",
+                    ))
+                }
+            },
         )
-        .ok_or_else(
-            || {
-                Error::new(
-                    ErrorKind::InvalidData,
-                    "CryptoAuthLib Provider initialization failed",
-                )
-            }
-        )
+        .ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidData,
+                "CryptoAuthLib Provider initialization failed",
+            )
+        })
     }
 }
