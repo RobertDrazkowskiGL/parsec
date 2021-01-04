@@ -68,6 +68,9 @@ fn list_opcodes() {
     let _ = core_provider_opcodes.insert(Opcode::ListOpcodes);
     let _ = core_provider_opcodes.insert(Opcode::ListKeys);
 
+    // Not that much to be tested ATM
+    let _ = crypto_providers_cal.insert(Opcode::PsaHashCompute);
+
     assert_eq!(
         client
             .list_opcodes(ProviderID::Core)
