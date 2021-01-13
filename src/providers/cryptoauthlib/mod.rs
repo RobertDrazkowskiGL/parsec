@@ -13,12 +13,14 @@ use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 use parsec_interface::operations::list_providers::ProviderInfo;
+use parsec_interface::operations::psa_generate_random;
 use parsec_interface::operations::psa_hash_compute;
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 
+mod generate_random;
 mod hash;
 
-const SUPPORTED_OPCODES: [Opcode; 1] = [Opcode::PsaHashCompute];
+const SUPPORTED_OPCODES: [Opcode; 2] = [Opcode::PsaHashCompute, Opcode::PsaGenerateRandom];
 
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
@@ -64,6 +66,14 @@ impl Provide for Provider {
     ) -> Result<psa_hash_compute::Result> {
         trace!("psa_hash_compute ingress");
         self.psa_hash_compute_internal(op)
+    }
+
+    fn psa_generate_random(
+        &self,
+        op: psa_generate_random::Operation,
+    ) -> Result<psa_generate_random::Result> {
+        trace!("psa_generate_random ingress");
+        self.psa_generate_random_internal(op)
     }
 }
 
