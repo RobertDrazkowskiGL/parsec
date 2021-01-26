@@ -9,7 +9,7 @@ impl Provider {
         &self,
         op: psa_generate_random::Operation,
     ) -> Result<psa_generate_random::Result> {
-        let mut random_bytes = vec![0u8, 0];
+        let mut random_bytes = vec![0u8; 0];
         // calculate loop count
         let call_count = (op.size + rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE - 1)
             / rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE;
