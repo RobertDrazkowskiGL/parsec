@@ -174,11 +174,32 @@ pub fn list_keys(
         };
 
         keys.push(KeyInfo {
-            provider_id: ProviderID::MbedCrypto,
+            provider_id: key_triple.provider_id,
             name: key_triple.key_name().to_string(),
             attributes: key_info.attributes,
         });
     }
 
     Ok(keys)
+}
+
+/// Returns a Vec of ApplicationName of clients having keys in the provider.
+///
+/// # Errors
+///
+/// Returns an error as a String if there was a problem accessing the Key Info Manager.
+pub fn list_clients(
+    manager: &dyn ManageKeyInfo,
+    provider_id: ProviderID,
+) -> Result<Vec<ApplicationName>, String> {
+    let key_triples = manager.get_all(provider_id)?;
+    let mut clients = Vec::new();
+
+    for key_triple in key_triples {
+        if !clients.contains(key_triple.app_name()) {
+            let _ = clients.push(key_triple.app_name().clone());
+        }
+    }
+
+    Ok(clients)
 }

@@ -1,21 +1,24 @@
-// Copyright 2019 Contributors to the Parsec project.
+// Copyright 2021 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
 //! Microchip CryptoAuthentication Library provider
 //!
-//! This provider is a hardware based implementation of PSA Crypto, Mbed Crypto.
+//! This provider implements Parsec operations using CryptoAuthentication
+//! Library backed by the ATECCx08 cryptochip.
 use super::Provide;
+use crate::authenticators::ApplicationName;
 use crate::key_info_managers::ManageKeyInfo;
 use derivative::Derivative;
 use log::trace;
+use parsec_interface::operations::list_keys::KeyInfo;
+use parsec_interface::operations::list_providers::ProviderInfo;
+use parsec_interface::operations::{list_clients, list_keys};
+use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
-use parsec_interface::operations::list_providers::ProviderInfo;
-use parsec_interface::operations::psa_generate_random;
-use parsec_interface::operations::psa_hash_compute;
-use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
+use parsec_interface::operations::{psa_generate_random, psa_hash_compute};
 
 mod generate_random;
 mod hash;
@@ -31,8 +34,7 @@ pub struct Provider {
 
 impl Provider {
     /// Creates and initialise a new instance of CryptoAuthLibProvider
-    // TODO - remove "pub" below. Implement ProviderBuilder.
-    pub fn new(
+    fn new(
         _key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
     ) -> Option<Provider> {
@@ -58,6 +60,24 @@ impl Provide for Provider {
             version_rev: 0,
             id: ProviderID::CryptoAuthLib,
         }, SUPPORTED_OPCODES.iter().copied().collect()))
+    }
+
+    fn list_keys(
+        &self,
+        _app_name: ApplicationName,
+        _op: list_keys::Operation,
+    ) -> Result<list_keys::Result> {
+        trace!("list_keys ingress");
+        let keys: Vec<KeyInfo> = Vec::new();
+
+        Ok(list_keys::Result { keys })
+    }
+
+    fn list_clients(&self, _op: list_clients::Operation) -> Result<list_clients::Result> {
+        trace!("list_clients ingress");
+        let clients: Vec<String> = Vec::new();
+
+        Ok(list_clients::Result { clients })
     }
 
     fn psa_hash_compute(

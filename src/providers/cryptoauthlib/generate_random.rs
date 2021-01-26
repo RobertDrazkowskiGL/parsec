@@ -12,9 +12,9 @@ impl Provider {
         // check input size
         // size 0 - no need to run operation
         if op.size == 0 {
-            return Ok(psa_generate_random::Result {
+            Ok(psa_generate_random::Result {
                 random_bytes: Zeroizing::new(vec![]),
-            });
+            })
         }
         // for size bigger than buffer size operation need to be executed multiple times
         else {
@@ -23,12 +23,13 @@ impl Provider {
             // loop
             for _i in 0..call_count {
                 let mut buffer = Vec::with_capacity(rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE);
-                match rust_cryptoauthlib::atcab_random(&mut buffer) {
+                let err = rust_cryptoauthlib::atcab_random(&mut buffer);
+                match err {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                         // append buffer vector to result vector
                         random_bytes.append(&mut buffer);
                     }
-                    err => {
+                    _ => {
                         let error = ResponseStatus::PsaErrorGenericError;
                         format_error!("Hash computation failed ", err);
                         return Err(error);
@@ -37,9 +38,9 @@ impl Provider {
             }
             // cut vector to desired size
             random_bytes.truncate(op.size);
-            return Ok(psa_generate_random::Result {
+            Ok(psa_generate_random::Result {
                 random_bytes: random_bytes.into(),
-            });
+            })
         }
     }
 }

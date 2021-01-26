@@ -9,7 +9,7 @@ use crate::authenticators::ApplicationName;
 use crate::key_info_managers::{self, ManageKeyInfo};
 use derivative::Derivative;
 use log::{info, trace};
-use parsec_interface::operations::{list_keys, list_providers::ProviderInfo};
+use parsec_interface::operations::{list_clients, list_keys, list_providers::ProviderInfo};
 use parsec_interface::operations::{
     psa_asymmetric_decrypt, psa_asymmetric_encrypt, psa_destroy_key, psa_export_public_key,
     psa_generate_key, psa_import_key, psa_sign_hash, psa_verify_hash,
@@ -21,6 +21,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, RwLock};
 use tss_esapi::constants::algorithm::{Cipher, HashingAlgorithm};
+use tss_esapi::interface_types::resource_handles::Hierarchy;
 use tss_esapi::Tcti;
 use uuid::Uuid;
 use zeroize::Zeroize;
@@ -105,6 +106,20 @@ impl Provide for Provider {
                     format_error!("Error occurred when fetching key information", e);
                     ResponseStatus::KeyInfoManagerError
                 })?,
+        })
+    }
+
+    fn list_clients(&self, _op: list_clients::Operation) -> Result<list_clients::Result> {
+        let store_handle = self.key_info_store.read().expect("Key store lock poisoned");
+        Ok(list_clients::Result {
+            clients: key_info_managers::list_clients(store_handle.deref(), ProviderID::Tpm)
+                .map_err(|e| {
+                    format_error!("Error occurred when fetching key information", e);
+                    ResponseStatus::KeyInfoManagerError
+                })?
+                .into_iter()
+                .map(|app_name| app_name.to_string())
+                .collect(),
         })
     }
 
@@ -263,10 +278,11 @@ impl ProviderBuilder {
     /// The method is unsafe because it relies on creating a TSS Context which could cause
     /// undefined behaviour if multiple such contexts are opened concurrently.
     unsafe fn find_default_context_cipher(&self) -> std::io::Result<Cipher> {
+        info!("Checking for ciphers supported by the TPM.");
         let ciphers = [Cipher::aes_256_cfb(), Cipher::aes_128_cfb()];
         let mut ctx = tss_esapi::Context::new(
             Tcti::from_str(self.tcti.as_ref().ok_or_else(|| {
-                std::io::Error::new(ErrorKind::InvalidData, "Invalid TCTI configuration string")
+                std::io::Error::new(ErrorKind::InvalidData, "TCTI configuration missing")
             })?)
             .map_err(|_| {
                 std::io::Error::new(ErrorKind::InvalidData, "Invalid TCTI configuration string")
@@ -286,7 +302,7 @@ impl ProviderBuilder {
         }
         Err(std::io::Error::new(
             ErrorKind::Other,
-            "desired ciphers not supported by TPM",
+            "desired ciphers not supported",
         ))
     }
 
@@ -300,7 +316,7 @@ impl ProviderBuilder {
         let hierarchy_auth = self.get_hierarchy_auth()?;
         let default_cipher = self.find_default_context_cipher()?;
         let tcti = Tcti::from_str(self.tcti.as_ref().ok_or_else(|| {
-            std::io::Error::new(ErrorKind::InvalidData, "Invalid TCTI configuration string")
+            std::io::Error::new(ErrorKind::InvalidData, "TCTI configuration missing")
         })?)
         .map_err(|_| {
             std::io::Error::new(ErrorKind::InvalidData, "Invalid TCTI configuration string")
@@ -316,7 +332,7 @@ impl ProviderBuilder {
                 .with_root_key_size(ROOT_KEY_SIZE)
                 .with_root_key_auth_size(ROOT_KEY_AUTH_SIZE)
                 .with_hierarchy_auth(hierarchy_auth)
-                .with_hierarchy(tss_esapi::utils::Hierarchy::Owner)
+                .with_hierarchy(Hierarchy::Owner)
                 .with_session_hash_alg(HashingAlgorithm::Sha256)
                 .with_default_context_cipher(default_cipher)
                 .build()

@@ -58,11 +58,27 @@ timeout = 200 # in milliseconds
 [authenticator]
 # (Required) Type of authenticator that will be used to authenticate clients' authentication
 # payloads.
-# Possible values: "Direct" and "UnixPeerCredentials".
+# Possible values: "Direct", "UnixPeerCredentials" and "JwtSvid".
 # WARNING: The "Direct" authenticator is only secure under specific requirements. Please make sure
 # to read the Recommendations on a Secure Parsec Deployment at
 # https://parallaxsecond.github.io/parsec-book/parsec_security/secure_deployment.html
 auth_type = "UnixPeerCredentials"
+
+# List of admins to be identified by the authenticator.
+# The "name" field of each entry in the list must contain the application name (as required by the
+# identifier in `auth_type`). For example, for `UnixPeerCredentials`, the names should be UIDs of
+# the admin users.
+# WARNING: Admins have special privileges and access to operations that are not permitted for normal
+# users of the service. Only enable this feature with some list of admins if you are confident
+# about the need for those permissions.
+# Read more here: https://parallaxsecond.github.io/parsec-book/parsec_client/operations/index.html#core-operations
+#admins = [ { name = "admin_1" }, { name = "admin_2" } ]
+
+# (Required only for JwtSvid) Location of the Workload API endpoint
+# WARNING: only use this authenticator if the Workload API socket is TRUSTED. A malicious entity
+# owning that socket would have access to all the keys owned by clients using this authentication
+# method. This path *must* be trusted for as long as Parsec is running.
+#workload_endpoint="unix:///tmp/agent.sock"
 
 # (Required) Configuration for the components managing key info for providers.
 # Defined as an array of tables: https://github.com/toml-lang/toml#user-content-array-of-tables
@@ -126,21 +142,25 @@ key_info_manager = "on-disk-manager"
 # provided, the value is considered to be a string.
 #owner_hierarchy_auth = "password"
 
-[[provider]]
-provider_type = "CryptoAuthLib"
-key_info_manager = "on-disk-manager"
-# (Required)
-device_type = "atecc508a"
-# (Required)
-iface_type = "i2c"
-# (Required)
-wake_delay = 1500
-# (Required)
-rx_retries = 20
+# Example of a CryptoAuthLib provider configuration
+# All below parameters depend on what devices, interfaces or parameters are required or supported by
+# "rust-cryptoauthlib" wrapper for cryptoauthlib and underlying hardware.
+#[[provider]]
+#provider_type = "CryptoAuthLib"
+#key_info_manager = "on-disk-manager"
+# (Required) ATCA device type.
+#   Supported values: "atecc508a", "atecc608a"
+#device_type = "atecc508a"
+# (Required) Interface for ATCA device
+#   Supported values: "i2c"
+#iface_type = "i2c"
+# (Required) Default wake delay for ATCA device
+#wake_delay = 1500
+# (Required) Default number of rx retries for ATCA device
+#rx_retries = 20
 # (Optional - required for i2c) i2c slave addres
-slave_address = 0xc0
+#slave_address = 0xc0
 # (Optional - required for i2c) i2c bus number
-# bus 2 was the default but bus 1 works with i2c-pseudo
-bus = 1
+#bus = 1
 # (Optional - required for i2c) i2c bus baud rate
-baud = 400000
+#baud = 400000

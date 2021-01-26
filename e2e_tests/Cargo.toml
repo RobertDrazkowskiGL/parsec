@@ -14,17 +14,13 @@ publish = false
 
 [dependencies]
 serde = { version = "1.0.115", features = ["derive"] }
-#parsec-client = { git = "https://github.com/parallaxsecond/parsec-client-rust", rev = "3f7dfc7bd06bea7cb3aa38cdcb270af7b8899f89", features = ["testing"] }
-parsec-client = { git = "ssh://git@portal-ua.globallogic.com/arm-pelion-egde/parsec-rust-client.git", branch = "calib-integration", features = ["testing"] }
+parsec-client = { git = "https://github.com/parallaxsecond/parsec-client-rust.git", features = ["testing", "spiffe-auth"] }
 log = "0.4.11"
 rand = "0.7.3"
-
-[patch.crates-io]
-psa-crypto = { git = "https://github.com/parallaxsecond/rust-psa-crypto", rev = "22a505bedce1c21246ce5c3cf41ea97b0b781830" }
+env_logger = "0.7.1"
 
 [dev-dependencies]
 ring = "0.16.15"
-env_logger = "0.7.1"
 rsa = "0.3.0"
 picky-asn1-x509 = "0.3.2"
 base64 = "0.12.3"

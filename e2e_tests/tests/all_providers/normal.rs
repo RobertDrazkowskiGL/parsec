@@ -1,8 +1,12 @@
 // Copyright 2019 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
+use e2e_tests::RawRequestClient;
 use e2e_tests::TestClient;
 use parsec_client::core::interface::operations::list_providers::Uuid;
-use parsec_client::core::interface::requests::{AuthType, Opcode, ProviderID, Result};
+use parsec_client::core::interface::requests::request::RawHeader;
+use parsec_client::core::interface::requests::{
+    AuthType, Opcode, ProviderID, ResponseStatus, Result,
+};
 use std::collections::HashSet;
 
 #[test]
@@ -70,6 +74,7 @@ fn list_opcodes() {
 
     // Not that much to be tested ATM
     let _ = crypto_providers_cal.insert(Opcode::PsaHashCompute);
+    let _ = crypto_providers_cal.insert(Opcode::PsaGenerateRandom);
 
     assert_eq!(
         client
@@ -134,26 +139,111 @@ fn list_keys() {
 
     assert!(keys.is_empty());
 
-    let key1 = String::from("list_keys1");
-    let key2 = String::from("list_keys2");
-    let key3 = String::from("list_keys3");
+    let providers = client.list_providers().expect("Failed to list providers");
+    let mut suitable_providers = vec![];
 
-    client.set_provider(ProviderID::MbedCrypto);
-    client.generate_rsa_sign_key(key1.clone()).unwrap();
-    client.set_provider(ProviderID::Pkcs11);
-    client.generate_rsa_sign_key(key2.clone()).unwrap();
-    client.set_provider(ProviderID::Tpm);
-    client.generate_rsa_sign_key(key3.clone()).unwrap();
+    for provider in providers.iter() {
+        client.set_provider(provider.id);
+        if !client.is_operation_supported(Opcode::PsaGenerateKey) {
+            continue;
+        }
+        suitable_providers.push(provider.clone());
+        client
+            .generate_rsa_sign_key(format!("list_keys_{}", provider.id))
+            .unwrap();
+    }
 
-    let key_names: Vec<String> = client
+    let key_names: Vec<(String, ProviderID)> = client
         .list_keys()
         .expect("list_keys failed")
         .into_iter()
-        .map(|k| k.name)
+        .map(|k| (k.name, k.provider_id))
         .collect();
 
-    assert_eq!(key_names.len(), 3);
-    assert!(key_names.contains(&key1));
-    assert!(key_names.contains(&key2));
-    assert!(key_names.contains(&key3));
+    assert_eq!(key_names.len(), suitable_providers.len());
+
+    for provider in suitable_providers.iter() {
+        assert!(key_names.contains(&(format!("list_keys_{}", provider.id), provider.id)));
+    }
+}
+
+#[test]
+// See #310
+fn invalid_provider_list_keys() {
+    let mut client = RawRequestClient {};
+    let mut req_hdr = RawHeader::new();
+
+    // Always targeting the Mbed Crypto provider
+    req_hdr.provider = 0x1;
+    req_hdr.opcode = Opcode::ListKeys as u32;
+
+    let resp = client
+        .send_raw_request(req_hdr, Vec::new())
+        .expect("Failed to read Response");
+    assert_eq!(resp.header.status, ResponseStatus::PsaErrorNotSupported);
+}
+
+#[test]
+fn invalid_provider_list_clients() {
+    let mut client = RawRequestClient {};
+    let mut req_hdr = RawHeader::new();
+
+    // Always targeting the Mbed Crypto provider
+    req_hdr.provider = 0x1;
+    req_hdr.opcode = Opcode::ListClients as u32;
+
+    let resp = client
+        .send_raw_request(req_hdr, Vec::new())
+        .expect("Failed to read Response");
+    assert_eq!(resp.header.status, ResponseStatus::PsaErrorNotSupported);
+}
+
+#[test]
+fn list_and_delete_clients() {
+    let mut client = TestClient::new();
+    client.do_not_destroy_keys();
+
+    let all_providers_user = "list_clients test".to_string();
+    client.set_default_auth(Some(all_providers_user.clone()));
+
+    let clients = client.list_clients().expect("list_clients failed");
+    assert!(!clients.contains(&all_providers_user));
+
+    let providers = client.list_providers().expect("Failed to list providers");
+    let mut suitable_providers = vec![];
+
+    for provider in providers.iter() {
+        client.set_provider(provider.id);
+        if !client.is_operation_supported(Opcode::PsaGenerateKey) {
+            continue;
+        }
+        suitable_providers.push(provider.clone());
+
+        client.set_default_auth(Some(all_providers_user.clone()));
+        client
+            .generate_rsa_sign_key("all-providers-user-key".to_string())
+            .unwrap();
+
+        client.set_default_auth(Some(format!("user_{}", provider.id)));
+        client
+            .generate_rsa_sign_key(format!("user_{}-key", provider.id))
+            .unwrap();
+    }
+
+    client.set_default_auth(Some(all_providers_user.clone()));
+
+    let clients = client.list_clients().expect("list_clients failed");
+
+    assert!(clients.contains(&all_providers_user));
+    client.delete_client(all_providers_user).unwrap();
+
+    for provider in suitable_providers.iter() {
+        let username = format!("user_{}", provider.id);
+        assert!(clients.contains(&username));
+        client.delete_client(username).unwrap();
+    }
+
+    let keys = client.list_keys().expect("list_keys failed");
+
+    assert!(keys.is_empty());
 }
