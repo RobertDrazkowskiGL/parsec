@@ -15,7 +15,7 @@ use parsec_interface::operations::{list_clients, list_keys};
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use uuid::Uuid;
 
 use parsec_interface::operations::{psa_generate_random, psa_hash_compute};
@@ -27,13 +27,17 @@ const SUPPORTED_OPCODES: [Opcode; 2] = [Opcode::PsaHashCompute, Opcode::PsaGener
 
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
-#[derivative(Debug, Clone)]
+#[derivative(Debug)]
 pub struct Provider {
     device: rust_cryptoauthlib::AtcaDevice,
+    /// Tha CryptoAuthLib API is not re-entrant so rust-cryptoauthlib
+    /// is not re-entrant either.
+    /// All calls must be protected by the mutex.
+    atcab_api_mutex: Mutex<()>,
 }
 
 impl Provider {
-    /// Creates and initialise a new instance of CryptoAuthLibProvider
+    /// Creates and initialise an instance of CryptoAuthLibProvider
     fn new(
         _key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
@@ -42,8 +46,7 @@ impl Provider {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => rust_cryptoauthlib::atcab_get_device(),
             _ => return None,
         };
-        let cryptoauthlib_provider = Provider { device };
-        Some(cryptoauthlib_provider)
+        Some(Provider { device, atcab_api_mutex: Mutex::new(())})
     }
 }
 

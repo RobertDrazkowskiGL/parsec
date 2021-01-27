@@ -16,7 +16,15 @@ impl Provider {
         // loop
         for _i in 0..call_count {
             let mut buffer = Vec::with_capacity(rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE);
-            let err = rust_cryptoauthlib::atcab_random(&mut buffer);
+            let err = {
+                // critical section start
+                let _guard = self
+                    .atcab_api_mutex
+                    .lock()
+                    .expect("Could not lock atcab API mutex");
+                rust_cryptoauthlib::atcab_random(&mut buffer)
+                // critical section end
+            };
             match err {
                 rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                     // append buffer vector to result vector

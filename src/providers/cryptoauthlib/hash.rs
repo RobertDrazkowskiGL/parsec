@@ -14,7 +14,16 @@ impl Provider {
         match op.alg {
             Hash::Sha256 => {
                 let message = op.input.to_vec();
-                let err = rust_cryptoauthlib::atcab_sha(message, &mut hash);
+
+                let err = {
+                    // critical section start
+                    let _guard = self
+                        .atcab_api_mutex
+                        .lock()
+                        .expect("Could not lock atcab API mutex");
+                    rust_cryptoauthlib::atcab_sha(message, &mut hash)
+                    // critical section end
+                };
                 match err {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                         Ok(psa_hash_compute::Result { hash: hash.into() })
@@ -25,6 +34,7 @@ impl Provider {
                         Err(error)
                     }
                 }
+
             }
             _ => {
                 let error = ResponseStatus::PsaErrorNotSupported;
