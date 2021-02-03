@@ -11,20 +11,12 @@ impl Provider {
     ) -> Result<psa_generate_random::Result> {
         let mut random_bytes = vec![0u8; 0];
         // calculate loop count
-        let call_count = (op.size + rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE - 1)
-            / rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE;
+        let call_count = (op.size + rust_cryptoauthlib::ATCA_RANDOM_BUFFER_SIZE - 1)
+            / rust_cryptoauthlib::ATCA_RANDOM_BUFFER_SIZE;
         // loop
         for _i in 0..call_count {
-            let mut buffer = Vec::with_capacity(rust_cryptoauthlib::ACTA_RANDOM_BUFFER_SIZE);
-            let err = {
-                // critical section start
-                let _guard = self
-                    .atcab_api_mutex
-                    .lock()
-                    .expect("Could not lock atcab API mutex");
-                rust_cryptoauthlib::atcab_random(&mut buffer)
-                // critical section end
-            };
+            let mut buffer = Vec::with_capacity(rust_cryptoauthlib::ATCA_RANDOM_BUFFER_SIZE);
+            let err = self.device.random(&mut buffer);
             match err {
                 rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                     // append buffer vector to result vector
