@@ -175,7 +175,7 @@ dependencies = [
 [[package]]
 name = "cryptoauthlib-sys"
 version = "0.1.0"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git?branch=devel-0.2.0#5611617cae97b01d7e72c2f3b98cd895299f9797"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git?branch=devel-0.2.0#f46f11cd7e3a24bb219439009cc7edce1f2eef01"
 dependencies = [
  "cmake",
 ]
@@ -887,7 +887,7 @@ dependencies = [
 [[package]]
 name = "rust-cryptoauthlib"
 version = "0.1.0"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git?branch=devel-0.2.0#5611617cae97b01d7e72c2f3b98cd895299f9797"
+source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git?branch=devel-0.2.0#f46f11cd7e3a24bb219439009cc7edce1f2eef01"
 dependencies = [
  "cryptoauthlib-sys",
  "lazy_static",
