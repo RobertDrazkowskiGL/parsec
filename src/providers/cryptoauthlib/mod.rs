@@ -18,12 +18,17 @@ use std::io::{Error, ErrorKind};
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
-use parsec_interface::operations::{psa_generate_random, psa_hash_compare, psa_hash_compute};
+use parsec_interface::operations::{
+    psa_generate_random, psa_hash_compare, psa_hash_compute, psa_generate_key, psa_destroy_key
+};
 
 mod generate_random;
 mod hash;
+mod key_operations;
 
-const SUPPORTED_OPCODES: [Opcode; 3] = [
+const SUPPORTED_OPCODES: [Opcode; 5] = [
+    Opcode::PsaGenerateKey,
+    Opcode::PsaDestroyKey,
     Opcode::PsaHashCompute,
     Opcode::PsaHashCompare,
     Opcode::PsaGenerateRandom,
@@ -105,6 +110,24 @@ impl Provide for Provider {
     ) -> Result<psa_generate_random::Result> {
         trace!("psa_generate_random ingress");
         self.psa_generate_random_internal(op)
+    }
+
+    fn psa_generate_key(
+        &self,
+        app_name: ApplicationName,
+        op: psa_generate_key::Operation,
+    ) -> Result<psa_generate_key::Result> {
+        trace!("psa_generate_key ingress");
+        self.psa_generate_key_internal(app_name, op)
+    }
+
+    fn psa_destroy_key(
+        &self,
+        app_name: ApplicationName,
+        op: psa_destroy_key::Operation,
+    ) -> Result<psa_destroy_key::Result> {
+        trace!("psa_destroy_key ingress");
+        self.psa_destroy_key_internal(app_name, op)
     }
 }
 
