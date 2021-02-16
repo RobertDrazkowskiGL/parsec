@@ -7,15 +7,18 @@
 use super::Provide;
 use crate::authenticators::ApplicationName;
 use crate::key_info_managers::ManageKeyInfo;
+use crate::key_info_managers::KeyTriple;
+use crate::providers::cryptoauthlib::key_management::AteccKeySlot;
+use crate::providers::cryptoauthlib::key_management::KeySlotStatus::{Free, Locked};
 use derivative::Derivative;
-use log::trace;
+use log::{error, trace, warn};
 use parsec_interface::operations::list_keys::KeyInfo;
 use parsec_interface::operations::list_providers::ProviderInfo;
 use parsec_interface::operations::{list_clients, list_keys};
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, Mutex};
 use uuid::Uuid;
 
 use parsec_interface::operations::{
@@ -25,6 +28,7 @@ use parsec_interface::operations::{
 mod generate_random;
 mod hash;
 mod key_operations;
+mod key_management;
 
 const SUPPORTED_OPCODES: [Opcode; 5] = [
     Opcode::PsaGenerateKey,
@@ -39,19 +43,109 @@ const SUPPORTED_OPCODES: [Opcode; 5] = [
 #[derivative(Debug)]
 pub struct Provider {
     device: rust_cryptoauthlib::AteccDevice,
+    #[derivative(Debug = "ignore")]
+    key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
+    key_slots: [AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize],
+    key_handle_mutex: Mutex<()>,
 }
 
 impl Provider {
-    /// Creates and initialise an instance of CryptoAuthLibProvider
+    /// Creates and initialises an instance of CryptoAuthLibProvider
     fn new(
-        _key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
+        key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
     ) -> Option<Provider> {
+        // First get the device, initialise it and communication channel with it
         let device = match rust_cryptoauthlib::AteccDevice::new(atca_iface) {
             Ok(x) => x,
             _ => return None,
         };
-        Some(Provider { device })
+        // ATECC is useful for non-trivial usage only when its configuration is locked
+        let mut is_locked = false;
+        let err = device.configuration_is_locked(& mut is_locked);
+        match err {
+            rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
+                if !is_locked {
+                    error!("Error, configuration is not locked.");
+                    return None;
+                }
+            }
+            _ => {
+                error!("Configuration error: {}", err);
+                return None;
+            }
+        }
+        // Get the configuration from ATECC...
+        let mut atecc_config_vec = Vec::<rust_cryptoauthlib::AtcaSlot>::new();
+        let err = device.get_config(& mut atecc_config_vec);
+        if rust_cryptoauthlib::AtcaStatus::AtcaSuccess != err {
+            error!("atecc_get_config failed: {}", err);
+            return None;
+        }
+        // ... and set the key slots configuration as read from hardware
+        let mut key_slots = [AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize];
+        for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
+            if atecc_config_vec[slot as usize].id != slot {
+                error!("configuration mismatch: vector index does not match its id.");
+                return None;
+            }
+            key_slots[slot as usize] = AteccKeySlot {
+                ref_count: 0u8,
+                status: {
+                    match atecc_config_vec[slot as usize].is_locked {
+                        true => Locked,
+                        _ => Free,
+                    }
+                },
+                config: atecc_config_vec[slot as usize].config
+            }
+        }
+
+        let cryptoauthlib_provider = Provider {
+            device,
+            key_info_store,
+            key_slots,
+            key_handle_mutex: Mutex::new(()),
+        };
+        // Validate KeyInfo data store against hardware configuration.
+        // Delete invalid entries or invalid mappings.
+        // Mark the slots free/busy appropriately.
+        {
+            // The local scope allows to drop store_handle and local_ids_handle in order to return
+            // the cryptoauthlib_provider.
+            let mut store_handle = cryptoauthlib_provider
+                .key_info_store
+                .write()
+                .expect("Key store lock poisoned");
+            let mut to_remove: Vec<KeyTriple> = Vec::new();
+            match store_handle.get_all(ProviderID::CryptoAuthLib) {
+                Ok(key_triples) => {
+                    for key_triple in key_triples.iter().cloned() {
+                        match cryptoauthlib_provider.validate_key_triple(&key_triple, &*store_handle) {
+                            Ok(None) => (),
+                            Ok(Some(warning)) => warn!("{}", warning),
+                            Err(err) => {
+                                error!("{}", err);
+                                to_remove.push(key_triple.clone());
+                            }
+                        }
+                        continue;
+                    }
+                }
+                Err(string) => {
+                    error!("Key Info Manager error: {}", string);
+                    return None;
+                }
+            };
+            for key_triple in to_remove.iter() {
+                if let Err(string) = store_handle.remove(key_triple) {
+                    error!("Key Info Manager error: {}", string);
+                    return None;
+                }
+            }
+        }
+
+        Some(cryptoauthlib_provider)
     }
 }
 
