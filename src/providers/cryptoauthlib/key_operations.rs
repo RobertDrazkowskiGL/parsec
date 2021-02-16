@@ -16,13 +16,15 @@ impl Provider {
         let key_attributes = op.attributes;
         let key_name = op.key_name;
         let key_triple = KeyTriple::new(app_name, ProviderID::CryptoAuthLib, key_name);
-        // find suitable key id
+
+        // TODO: find suitable key id
         let key_id = 0; // placeholder
+
         // generate key
         // ATCA_STATUS atcab_genkey(uint16_t key_id, uint8_t *public_key)
         match self.device.genkey(key_id, &public_key) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
-                // update atca_slots
+                // TODO: update atca_slots
                 Ok(psa_generate_key::Result {})
             }
             _ => {
@@ -39,10 +41,26 @@ impl Provider {
         _op: psa_destroy_key::Operation,
     ) -> Result<psa_destroy_key::Result> {
         // create key triple
+        let key_name = op.key_name;
+        let key_triple = KeyTriple::new(app_name, ProviderID::CryptoAuthLib, key_name);
         // get key_id
-        // destroy key
-        // update storage
+        let mut store_handle = self.key_info_store.write().expect("Key Info Manager error");
+        // TODO: fn get_key_id(&key_info, key_triple)
+        // store_handle.get(key_triple)
+        let key_id = self.get_key_id(&key_triple, &*store_handle);
 
+        // destroy key
+        // overwrite slot if is not readonly
+        for id in key_id {
+            if is_slot_readonly(id){
+                // handle and return error
+            }
+        }
+        
+        // TODO: fn remove_key_id(&key_triple)
+        // store_handle.remove(key_triple)
+        self.remove_key_id(&key_triple, &*store_handle);
+        // update storage
         Ok(psa_destroy_key::Result {})
     }
 }
