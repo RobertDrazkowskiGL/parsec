@@ -24,10 +24,11 @@ impl Provider {
         // ATCA_STATUS atcab_genkey(uint16_t key_id, uint8_t *public_key)
         match self.device.genkey(key_id, &public_key) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
-                // TODO: update atca_slots
+                // TODO: update mapping triple-info
                 Ok(psa_generate_key::Result {})
             }
             _ => {
+                // update slot status back to free
                 let error = ResponseStatus::PsaErrorGenericError;
                 format_error!("Key generation failed ", err);
                 Err(error)
@@ -44,7 +45,7 @@ impl Provider {
         let key_name = op.key_name;
         let key_triple = KeyTriple::new(app_name, ProviderID::CryptoAuthLib, key_name);
 
-        match self.try_release_slot(&key_triple, &*store_handle) {
+        match self.try_release_slot(&key_triple) {
             Ok => {
                 Ok(psa_destroy_key::Result {})
             }
