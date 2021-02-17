@@ -7,6 +7,7 @@ use parsec_interface::requests::ResponseStatus;
 use rust_cryptoauthlib;
 
 #[derive(Copy, Clone, Debug)]
+/// Software status of a ATECC slot
 pub enum KeySlotStatus {
     /// Slot is free
     Free,
@@ -14,17 +15,18 @@ pub enum KeySlotStatus {
     #[allow(dead_code)]
     /// Slot is busy but can be released
     Busy,
-    #[allow(dead_code)]
-    /// Slot is reserved but should be made free or busy soon
-    Reserved,
     /// Slot is busy and cannot be released, because of hardware protection
     Locked,
 }
 
 #[derive(Copy, Clone, Debug)]
+/// Hardware slot information
 pub struct AteccKeySlot {
+    /// Diagnotic field. Number of key triples pointing at this slot
     pub ref_count: u8,
+    /// Slot status
     pub status: KeySlotStatus,
+    /// Hardware configuration of a slot
     pub config: rust_cryptoauthlib::SlotConfig,
 }
 
@@ -52,13 +54,13 @@ impl Provider {
             Err(response_status) => {
                 let error = std::format!(
                     "Error getting the Key ID for triple:\n{}\n(error: {}), continuing...", 
-                    key_triple, response_status
+                    key_triple, response_status.to_string()
                 );
                 return Err(error);
             }
         };
         // check (2)
-        match self.key_info_vs_config(&key_info) {
+        match self.key_info_vs_config(&key_info, None) {
             Ok(_) => (),
             Err(err) => {
                 let error = std::format!(
@@ -82,7 +84,19 @@ impl Provider {
         Ok(None)
     }
 
-    fn key_info_vs_config(&self, _key_info: &KeyInfo) -> Result<(), String> {
+    /// Check if software key attributes are compatible with hardware slot configuration
+    /// 
+    /// # Arguments
+    /// 
+    /// * `key_info`: Software side. KeyInfo struct with key id and key attributes
+    /// * `key_slot`: Hardware side. AteccKeySlot struct with slot configuration.
+    ///               If None, function gets key_slot from key_info data (key_info validation).
+    /// 
+    fn key_info_vs_config(
+        &self, 
+        _key_info: &KeyInfo, 
+        _key_slot: Option<AteccKeySlot>
+    ) -> Result<(), ResponseStatus> {
         // let slot = key_info.id[0];
         // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
         //
@@ -93,7 +107,20 @@ impl Provider {
         Ok(())
     }
 
-    // fn find_suitable_key_id()
+    /// Iterate through key_slots and find one with configuration matching attributes from key_info
+    pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8,u8), ResponseStatus> {
+        let key_slots = self.key_slots.write().unwrap();
+        for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
+            match self.key_info_vs_config(key_info,Some(key_slots[slot as usize])) {
+                Ok(_) => return Ok((slot,0u8)),
+                Err(_) => continue,
+            }
+        }
+        Err(ResponseStatus::PsaErrorStorageFailure)
+    }
+    
+    // fn set_slot_status()
+    // fn try_release_key()
 
 
     fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8,u8)> {
@@ -111,14 +138,24 @@ impl Provider {
     fn get_key_info(
         key_triple: &KeyTriple,
         store_handle: &dyn ManageKeyInfo,
-    ) -> Result<KeyInfo, String> {
+    ) -> Result<KeyInfo, ResponseStatus> {
         match store_handle.get(key_triple) {
-            Ok(Some(key_info)) => Ok(KeyInfo{
-                id: key_info.id.to_vec(),
-                attributes: key_info.attributes,
-            }),
-            Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist.to_string()),
-            Err(string) => Err(key_info_managers::to_response_status(string).to_string()),
+            Ok(Some(key_info)) => {
+                if 0 == key_info.id.len() {
+                    format_error!(
+                        "Stored Key ID is not valid.",
+                        ResponseStatus::KeyInfoManagerError
+                    );
+                    Err(ResponseStatus::KeyInfoManagerError)
+                } else {
+                    Ok(KeyInfo {
+                        id: key_info.id.to_vec(),
+                        attributes: key_info.attributes,
+                    })
+                }
+            },
+            Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist),
+            Err(string) => Err(key_info_managers::to_response_status(string)),
         }
     }
 }

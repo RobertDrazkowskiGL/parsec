@@ -75,38 +75,46 @@ impl Provider {
                 return None;
             }
         }
+
+        // This will be returned when everything succeedes
+        let cryptoauthlib_provider = Provider {
+            device,
+            key_info_store,
+            key_slots:
+                RwLock::new([AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize]),
+            key_handle_mutex: Mutex::new(()),
+        };
+
         // Get the configuration from ATECC...
         let mut atecc_config_vec = Vec::<rust_cryptoauthlib::AtcaSlot>::new();
-        let err = device.get_config(& mut atecc_config_vec);
+        let err = cryptoauthlib_provider.device.get_config(& mut atecc_config_vec);
         if rust_cryptoauthlib::AtcaStatus::AtcaSuccess != err {
             error!("atecc_get_config failed: {}", err);
             return None;
         }
+        
         // ... and set the key slots configuration as read from hardware
-        let key_slots = RwLock::new([AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize]);
-        for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
-            if atecc_config_vec[slot as usize].id != slot {
-                error!("configuration mismatch: vector index does not match its id.");
-                return None;
-            }
-            key_slots.write().unwrap()[slot as usize] = AteccKeySlot {
-                ref_count: 0u8,
-                status: {
-                    match atecc_config_vec[slot as usize].is_locked {
-                        true => Locked,
-                        _ => Free,
-                    }
-                },
-                config: atecc_config_vec[slot as usize].config
+        {
+            // RwLock protection
+            let mut key_slots = cryptoauthlib_provider.key_slots.write().unwrap();
+            for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
+                if atecc_config_vec[slot as usize].id != slot {
+                    error!("configuration mismatch: vector index does not match its id.");
+                    return None;
+                }
+                key_slots[slot as usize] = AteccKeySlot {
+                    ref_count: 0u8,
+                    status: {
+                        match atecc_config_vec[slot as usize].is_locked {
+                            true => Locked,
+                            _ => Free,
+                        }
+                    },
+                    config: atecc_config_vec[slot as usize].config
+                }
             }
         }
 
-        let cryptoauthlib_provider = Provider {
-            device,
-            key_info_store,
-            key_slots,
-            key_handle_mutex: Mutex::new(()),
-        };
         // Validate KeyInfo data store against hardware configuration.
         // Delete invalid entries or invalid mappings.
         // Mark the slots free/busy appropriately.
