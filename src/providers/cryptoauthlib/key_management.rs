@@ -31,21 +31,6 @@ impl Default for AteccKeySlot {
     }
 }
 
-/// Get KeyInfo struct from ManageKeyInfo data store handle matching given KeyTriple
-pub fn get_key_info(
-    key_triple: &KeyTriple,
-    store_handle: &dyn ManageKeyInfo,
-) -> Result<KeyInfo, String> {
-    match store_handle.get(key_triple) {
-        Ok(Some(key_info)) => Ok(KeyInfo{
-            id: key_info.id.to_vec(),
-            attributes: key_info.attributes,
-        }),
-        Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist.to_string()),
-        Err(string) => Err(key_info_managers::to_response_status(string).to_string()),
-    }
-}
-
 impl Provider {
     /// Validate KeyInfo data store entry against hardware
     pub fn validate_key_triple(
@@ -59,7 +44,7 @@ impl Provider {
         // (3) if there are no two key triples mapping to a single ATECC slot - warning only ATM
 
         // check (1)
-        let key_info = match get_key_info(key_triple, &*store_handle) {
+        let key_info = match Provider::get_key_info(key_triple, &*store_handle) {
             Ok(key_info) => key_info,
             Err(response_status) => {
                 let error = std::format!(
@@ -83,10 +68,10 @@ impl Provider {
         // check(3)
         match self.ref_counter_update(&key_info) {
             Ok(_) => (),
-            Err(err) => {
+            Err(pair) => {
                 let warning = std::format!(
-                    "Superfluous reference(s) to ATECC slots {}; key triple:\n{}\n, continuing...",
-                    err, key_triple
+                    "Superfluous reference(s) to ATECC slots {:?}; key triple:\n{}\n, continuing...",
+                    pair, key_triple
                 );
                 return Ok(Some(warning));
             }
@@ -95,10 +80,39 @@ impl Provider {
     }
 
     fn key_info_vs_config(&self, _key_info: &KeyInfo) -> Result<(), String> {
+        // let slot = key_info.id[0];
+        // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
+        //
+        // (1) Check key_info.attributes.key_type
+        // (2) Check key_info.attributes.policy.usage_flags
+        // (3) Check key_info.attributes.policy.permitted_algorithms
+
         Ok(())
     }
 
-    fn ref_counter_update(&self, _key_info: &KeyInfo) -> Result<(), String> {
-        Ok(())
+    fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8,u8)> {
+        let slot = key_info.id[0];
+        let mut key_slot = self.key_slots.write().unwrap()[slot as usize];
+        key_slot.ref_count += 1;
+        if 1 < key_slot.ref_count {
+            Err((slot,0u8))
+        } else {
+            Ok(())
+        }
+    }
+
+    // Get KeyInfo struct from ManageKeyInfo data store handle matching given KeyTriple
+    fn get_key_info(
+        key_triple: &KeyTriple,
+        store_handle: &dyn ManageKeyInfo,
+    ) -> Result<KeyInfo, String> {
+        match store_handle.get(key_triple) {
+            Ok(Some(key_info)) => Ok(KeyInfo{
+                id: key_info.id.to_vec(),
+                attributes: key_info.attributes,
+            }),
+            Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist.to_string()),
+            Err(string) => Err(key_info_managers::to_response_status(string).to_string()),
+        }
     }
 }

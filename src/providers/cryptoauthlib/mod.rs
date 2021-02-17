@@ -45,7 +45,7 @@ pub struct Provider {
     device: rust_cryptoauthlib::AteccDevice,
     #[derivative(Debug = "ignore")]
     key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
-    key_slots: [AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize],
+    key_slots: RwLock<[AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize]>,
     key_handle_mutex: Mutex<()>,
 }
 
@@ -83,13 +83,13 @@ impl Provider {
             return None;
         }
         // ... and set the key slots configuration as read from hardware
-        let mut key_slots = [AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize];
+        let key_slots = RwLock::new([AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize]);
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
             if atecc_config_vec[slot as usize].id != slot {
                 error!("configuration mismatch: vector index does not match its id.");
                 return None;
             }
-            key_slots[slot as usize] = AteccKeySlot {
+            key_slots.write().unwrap()[slot as usize] = AteccKeySlot {
                 ref_count: 0u8,
                 status: {
                     match atecc_config_vec[slot as usize].is_locked {
@@ -132,14 +132,14 @@ impl Provider {
                         continue;
                     }
                 }
-                Err(string) => {
-                    error!("Key Info Manager error: {}", string);
+                Err(err) => {
+                    error!("Key Info Manager error: {}", err);
                     return None;
                 }
             };
             for key_triple in to_remove.iter() {
-                if let Err(string) = store_handle.remove(key_triple) {
-                    error!("Key Info Manager error: {}", string);
+                if let Err(err) = store_handle.remove(key_triple) {
+                    error!("Key Info Manager error: {}", err);
                     return None;
                 }
             }
