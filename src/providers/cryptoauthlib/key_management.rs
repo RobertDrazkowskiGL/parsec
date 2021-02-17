@@ -14,6 +14,9 @@ pub enum KeySlotStatus {
     #[allow(dead_code)]
     /// Slot is busy but can be released
     Busy,
+    #[allow(dead_code)]
+    /// Slot is reserved but should be made free or busy soon
+    Reserved,
     /// Slot is busy and cannot be released, because of hardware protection
     Locked,
 }
@@ -89,6 +92,9 @@ impl Provider {
 
         Ok(())
     }
+
+    // fn find_suitable_key_id()
+
 
     fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8,u8)> {
         let slot = key_info.id[0];
