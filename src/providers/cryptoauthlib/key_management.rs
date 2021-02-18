@@ -4,6 +4,7 @@ use super::Provider;
 use crate::key_info_managers;
 use crate::key_info_managers::{KeyInfo, KeyTriple, ManageKeyInfo};
 use parsec_interface::requests::ResponseStatus;
+use parsec_interface::operations::psa_key_attributes::Type;
 use rust_cryptoauthlib;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -60,7 +61,11 @@ impl Provider {
             }
         };
         // check (2)
-        match self.key_info_vs_config(&key_info, None) {
+        let key_slot = {
+            let lock = self.key_slots.read().unwrap();
+            lock[key_info.id[0] as usize]
+        };
+        match self.key_info_vs_config(&key_info, key_slot) {
             Ok(_) => (),
             Err(err) => {
                 let error = std::format!(
@@ -84,37 +89,93 @@ impl Provider {
         Ok(None)
     }
 
-    /// Check if software key attributes are compatible with hardware slot configuration
-    /// 
-    /// # Arguments
-    /// 
-    /// * `key_info`: Software side. KeyInfo struct with key id and key attributes
-    /// * `key_slot`: Hardware side. AteccKeySlot struct with slot configuration.
-    ///               If None, function gets key_slot from key_info data (key_info validation).
-    /// 
+    // Check if software key attributes are compatible with hardware slot configuration
     fn key_info_vs_config(
         &self, 
-        _key_info: &KeyInfo, 
-        _key_slot: Option<AteccKeySlot>
+        key_info: &KeyInfo,
+        key_slot: AteccKeySlot
     ) -> Result<(), ResponseStatus> {
-        // let slot = key_info.id[0];
-        // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
-        //
         // (1) Check key_info.attributes.key_type
+        if !Provider::key_type_ok(key_info, key_slot) {
+            return Err(ResponseStatus::PsaErrorNotSupported);
+        }
         // (2) Check key_info.attributes.policy.usage_flags
+        if !Provider::usage_flags_ok(key_info, key_slot) {
+            return Err(ResponseStatus::PsaErrorNotSupported);
+        }        
         // (3) Check key_info.attributes.policy.permitted_algorithms
 
         Ok(())
     }
 
-    /// Iterate through key_slots and find one with configuration matching attributes from key_info
+    fn key_type_ok(
+        key_info: &KeyInfo,
+        key_slot: AteccKeySlot
+    ) -> bool {
+        match key_info.attributes.key_type {
+            Type::RawData => {
+                key_slot.config.key_type == rust_cryptoauthlib::KeyType::ShaOrText
+            },
+            Type::Hmac => {
+                key_slot.config.no_mac == false
+            },
+            Type::Aes => {
+                key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes
+            },
+            Type::EccKeyPair   { .. } |
+            Type::EccPublicKey { .. } |
+            Type::DhKeyPair    { .. } |
+            Type::DhPublicKey  { .. } => {
+                key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
+            },
+            Type::Derive => {
+                // This may change...
+                false
+            }
+            _ => false,
+        }
+    }
+
+    fn usage_flags_ok(
+        key_info: &KeyInfo,
+        key_slot: AteccKeySlot
+    ) -> bool {
+        let mut result = true;
+        if key_info.attributes.policy.usage_flags.export ||
+            key_info.attributes.policy.usage_flags.copy {
+            result &= match key_slot.config.key_type {
+                rust_cryptoauthlib::KeyType::Aes => true,
+                rust_cryptoauthlib::KeyType::P256EccKey => {
+                    key_slot.config.pub_info == true && 
+                    match key_info.attributes.key_type {
+                        Type::EccPublicKey { .. } |
+                        Type::DhPublicKey  { .. } => true,
+                        _ => false,
+                    }
+                },
+                _ => true,
+            }
+        }
+        if !result {
+            return false;
+        }
+        if key_info.attributes.policy.usage_flags.sign_hash ||
+            key_info.attributes.policy.usage_flags.sign_message {
+            result &= key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey;
+            result &= key_slot.config.ecc_key_attr.is_private == true;
+        }
+        return result;
+    }
+
+    /// Iterate through key_slots and find a free one with configuration matching attributes from key_info.
+    /// If found, the slot is marked Busy.
     pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8,u8), ResponseStatus> {
         let mut key_slots = self.key_slots.write().unwrap();
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
             if KeySlotStatus::Free != key_slots[slot as usize].status {
                 continue;
             }
-            match self.key_info_vs_config(key_info,Some(key_slots[slot as usize])) {
+            match self.key_info_vs_config(key_info,key_slots[slot as usize]) {
                 Ok(_) => {
                     key_slots[slot as usize].status = KeySlotStatus::Busy;
                     return Ok((slot,0u8));
