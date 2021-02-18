@@ -277,8 +277,59 @@ impl Provider {
         Err(ResponseStatus::PsaErrorStorageFailure)
     }
     
-    // fn set_slot_status()
-    // fn try_release_key()
+    fn set_slot_status(
+        slot: &AteccKeySlot,
+        status: KeySlotStatus,
+    ) -> Result<bool, bool)> {
+        match status {
+            KeySlotStatus::Free => {
+                if slot.status == KeySlotStatus::Busy {
+                    slot.status = status;
+                    Ok(true)
+                } else {
+                    error!("Invalid status change.");
+                    Err(false)
+                }
+            }
+            KeySlotStatus::Busy => {
+                if slot.status == KeySlotStatus::Free {
+                    slot.status = status;
+                    Ok(true)
+                } else {
+                    error!("Invalid status change.");
+                    Err(false)
+                }
+            }
+            KeySlotStatus::Locked => {
+                if slot.status == KeySlotStatus::Free ||
+                slot.status == KeySlotStatus::Busy {
+                    slot.status = status;
+                    Ok(true)
+                } else {
+                    error!("Invalid status change.");
+                    Err(false)
+                }
+            }
+            _ => {
+                error!("Invalid status.");
+                Err(false)
+            }
+        }
+    }
+
+    pub fn try_release_key(key_triple: &KeyTriple) -> Result<psa_destroy_key::Result> {
+        let mut store_handle = self.key_info_store.write().expect("Key store lock poisoned");
+        match store_handle.remove(&key_triple) {
+            Ok(Some(key_info)) => {
+                let id = key_info.id;
+                Provider::set_slot_status(&self.key_slots[id], KeySlotStatus::Free);
+                Ok(psa_destroy_key::Result)
+            }
+            Err(string) => {
+                Err(string)
+            }
+        }
+    }
 
 
     fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8,u8)> {

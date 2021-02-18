@@ -18,7 +18,9 @@ impl Provider {
         let key_triple = KeyTriple::new(app_name, ProviderID::CryptoAuthLib, key_name);
 
         // TODO: find suitable key id
-        let key_id = 0; // placeholder
+        let key_info = Provider::get_key_info(&key_triple);
+        let key_id = Provider::find_suitable_slot(&key_info);
+        let public_key = Vec::new(); // type might change
 
         // generate key
         // ATCA_STATUS atcab_genkey(uint16_t key_id, uint8_t *public_key)
@@ -49,8 +51,9 @@ impl Provider {
             Ok => {
                 Ok(psa_destroy_key::Result {})
             }
-            Err => {
-                // handle error
+            Err(string) => {
+                error!(string);
+                Err()
             }
         }
     }
