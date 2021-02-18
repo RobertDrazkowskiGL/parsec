@@ -6,7 +6,7 @@ use crate::key_info_managers::{KeyInfo, KeyTriple, ManageKeyInfo};
 use parsec_interface::requests::ResponseStatus;
 use rust_cryptoauthlib;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 /// Software status of a ATECC slot
 pub enum KeySlotStatus {
     /// Slot is free
@@ -109,10 +109,16 @@ impl Provider {
 
     /// Iterate through key_slots and find one with configuration matching attributes from key_info
     pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8,u8), ResponseStatus> {
-        let key_slots = self.key_slots.write().unwrap();
+        let mut key_slots = self.key_slots.write().unwrap();
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
+            if KeySlotStatus::Free != key_slots[slot as usize].status {
+                continue;
+            }
             match self.key_info_vs_config(key_info,Some(key_slots[slot as usize])) {
-                Ok(_) => return Ok((slot,0u8)),
+                Ok(_) => {
+                    key_slots[slot as usize].status = KeySlotStatus::Busy;
+                    return Ok((slot,0u8));
+                },
                 Err(_) => continue,
             }
         }
