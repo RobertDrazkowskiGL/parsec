@@ -4,7 +4,9 @@ use super::Provider;
 use crate::key_info_managers;
 use crate::key_info_managers::{KeyInfo, KeyTriple, ManageKeyInfo};
 use parsec_interface::requests::ResponseStatus;
-use parsec_interface::operations::psa_key_attributes::Type;
+use parsec_interface::operations::psa_key_attributes::{ EccFamily, Type};
+use parsec_interface::operations::psa_algorithm::{ Algorithm, Aead, AeadWithDefaultLengthTag, 
+    AsymmetricSignature, Cipher, FullLengthMac, Hash, KeyAgreement, Mac, RawKeyAgreement, SignHash};
 use rust_cryptoauthlib;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -104,6 +106,9 @@ impl Provider {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }        
         // (3) Check key_info.attributes.policy.permitted_algorithms
+        if !Provider::algorithms_ok(key_info, key_slot) {
+            return Err(ResponseStatus::PsaErrorNotSupported);
+        } 
 
         Ok(())
     }
@@ -122,13 +127,14 @@ impl Provider {
             Type::Aes => {
                 key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes
             },
-            Type::EccKeyPair   { .. } |
-            Type::EccPublicKey { .. } |
-            Type::DhKeyPair    { .. } |
-            Type::DhPublicKey  { .. } => {
+            Type::EccKeyPair { curve_family: EccFamily::SecpR1 } |
+            Type::EccPublicKey { curve_family: EccFamily::SecpR1 } => {
+                key_info.attributes.bits == 256 &&
                 key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
             },
-            Type::Derive => {
+            Type::Derive             |
+            Type::DhKeyPair   { .. } |
+            Type::DhPublicKey { .. } => {
                 // This may change...
                 false
             }
@@ -165,6 +171,91 @@ impl Provider {
             result &= key_slot.config.ecc_key_attr.is_private == true;
         }
         return result;
+    }
+
+    fn algorithms_ok(
+        key_info: &KeyInfo,
+        key_slot: AteccKeySlot
+    ) -> bool {
+        match key_info.attributes.policy.permitted_algorithms {
+            // Hash algorithm
+            Algorithm::Hash(Hash::Sha256) => true,
+            // Mac::Hmac algorithm
+            Algorithm::Mac(Mac::Truncated {
+                mac_alg: FullLengthMac::Hmac {
+                    hash_alg: Hash::Sha256
+                },
+                ..
+            })
+            | Algorithm::Mac(Mac::FullLength (
+                FullLengthMac::Hmac {
+                    hash_alg: Hash::Sha256
+                })) => {
+                key_slot.config.no_mac == false &&
+                key_slot.config.key_type != rust_cryptoauthlib::KeyType::P256EccKey &&
+                key_slot.config.ecc_key_attr.is_private == false
+            },
+            // Mac::CbcMac and Mac::Cmac algorithms
+            Algorithm::Mac(Mac::Truncated {
+                mac_alg: FullLengthMac::CbcMac,
+                ..
+            })
+            | Algorithm::Mac(Mac::FullLength(FullLengthMac::CbcMac))
+            | Algorithm::Mac(Mac::Truncated {
+                mac_alg: FullLengthMac::Cmac,
+                ..
+            })
+            | Algorithm::Mac(Mac::FullLength(FullLengthMac::Cmac)) => {
+                key_slot.config.no_mac == false &&
+                key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes
+            }
+            // Cipher
+            Algorithm::Cipher(Cipher::CbcPkcs7) |
+            Algorithm::Cipher(Cipher::Ctr) |
+            Algorithm::Cipher(Cipher::Cfb) |
+            Algorithm::Cipher(Cipher::Ofb) => key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes,
+            // Aead
+            Algorithm::Aead(Aead::AeadWithDefaultLengthTag(AeadWithDefaultLengthTag::Ccm)) |
+            Algorithm::Aead(Aead::AeadWithDefaultLengthTag(AeadWithDefaultLengthTag::Gcm)) |
+            Algorithm::Aead(Aead::AeadWithShortenedTag {
+                aead_alg: AeadWithDefaultLengthTag::Ccm,
+                ..
+            }) |
+            Algorithm::Aead(Aead::AeadWithShortenedTag {
+                aead_alg: AeadWithDefaultLengthTag::Gcm,
+                ..
+            }) => key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes,
+            // AsymmetricSignature
+            Algorithm::AsymmetricSignature(AsymmetricSignature::Ecdsa {
+                hash_alg: SignHash::Specific(Hash::Sha256)
+            }) => {
+                key_slot.config.is_secret == true &&
+                key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey &&
+                key_slot.config.ecc_key_attr.is_private == true
+                // TODO: what is external or internal hashing?
+            },
+            Algorithm::AsymmetricSignature(AsymmetricSignature::DeterministicEcdsa {
+                hash_alg: SignHash::Specific(Hash::Sha256)
+            }) => {
+                // RFC 6979
+                false
+            },
+            // AsymmetricEncryption
+            Algorithm::AsymmetricEncryption(..) => {
+                // why only RSA? it could work with ECC...
+                false
+            },
+            // KeyAgreement
+            Algorithm::KeyAgreement(KeyAgreement::Raw(RawKeyAgreement::Ecdh)) |
+            Algorithm::KeyAgreement(KeyAgreement::WithKeyDerivation {
+                ka_alg: RawKeyAgreement::Ecdh,
+                ..
+            }) => {
+                key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
+            },
+            // Nothing else is known to be supported by Atecc
+            _ => false, 
+        }
     }
 
     /// Iterate through key_slots and find a free one with configuration matching attributes from key_info.
