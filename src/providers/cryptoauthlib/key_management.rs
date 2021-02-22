@@ -278,52 +278,63 @@ impl Provider {
     }
     
     fn set_slot_status(
-        slot: &AteccKeySlot,
+        slot: &mut AteccKeySlot,
         status: KeySlotStatus,
-    ) -> Result<bool, bool)> {
+    ) -> Result<(), String> {
+        let err_msg = "Invalid status change.";
         match status {
             KeySlotStatus::Free => {
                 if slot.status == KeySlotStatus::Busy {
                     slot.status = status;
-                    Ok(true)
+                    Ok(())
                 } else {
-                    error!("Invalid status change.");
-                    Err(false)
+                    Err(err_msg.to_string())
                 }
             }
             KeySlotStatus::Busy => {
                 if slot.status == KeySlotStatus::Free {
                     slot.status = status;
-                    Ok(true)
+                    Ok(())
                 } else {
-                    error!("Invalid status change.");
-                    Err(false)
+                    Err(err_msg.to_string())
                 }
             }
             KeySlotStatus::Locked => {
                 if slot.status == KeySlotStatus::Free ||
                 slot.status == KeySlotStatus::Busy {
                     slot.status = status;
-                    Ok(true)
+                    Ok(())
                 } else {
-                    error!("Invalid status change.");
-                    Err(false)
+                    Err(err_msg.to_string())
                 }
-            }
-            _ => {
-                error!("Invalid status.");
-                Err(false)
             }
         }
     }
 
-    pub fn try_release_key(key_triple: &KeyTriple) -> Result<psa_destroy_key::Result> {
+    /// todo
+    pub fn try_release_key(
+        &self,
+        key_triple: &KeyTriple,
+    ) -> Result<(), String> {
         let mut store_handle = self.key_info_store.write().expect("Key store lock poisoned");
         match store_handle.remove(&key_triple) {
             Ok(Some(key_info)) => {
-                let id = key_info.id;
-                Provider::set_slot_status(&self.key_slots[id], KeySlotStatus::Free);
-                Ok(psa_destroy_key::Result)
+                let id = key_info.id[0]; // get key id to fn?
+                match Provider::set_slot_status(
+                    &mut self.key_slots.write().unwrap()[id as usize],
+                    KeySlotStatus::Free,
+                ) {
+                    Ok(()) => {
+                        Ok(())
+                    }
+                    Err(string) => {
+                        Err(string)
+                    }
+                }
+            }
+            Ok(None) => {
+                // handle
+                Ok(())
             }
             Err(string) => {
                 Err(string)
@@ -343,8 +354,8 @@ impl Provider {
         }
     }
 
-    // Get KeyInfo struct from ManageKeyInfo data store handle matching given KeyTriple
-    fn get_key_info(
+    /// Get KeyInfo struct from ManageKeyInfo data store handle matching given KeyTriple
+    pub fn get_key_info(
         key_triple: &KeyTriple,
         store_handle: &dyn ManageKeyInfo,
     ) -> Result<KeyInfo, ResponseStatus> {
