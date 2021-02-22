@@ -262,7 +262,7 @@ impl Provider {
     /// If found, the slot is marked Busy.
     pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8,u8), ResponseStatus> {
         let mut key_slots = self.key_slots.write().unwrap();
-        for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
+        for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
             if KeySlotStatus::Free != key_slots[slot as usize].status {
                 continue;
             }

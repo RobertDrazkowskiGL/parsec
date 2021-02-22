@@ -45,7 +45,7 @@ pub struct Provider {
     device: rust_cryptoauthlib::AteccDevice,
     #[derivative(Debug = "ignore")]
     key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
-    key_slots: RwLock<[AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize]>,
+    key_slots: RwLock<[AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize]>,
     key_handle_mutex: Mutex<()>,
 }
 
@@ -81,7 +81,7 @@ impl Provider {
             device,
             key_info_store,
             key_slots:
-                RwLock::new([AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS as usize]),
+                RwLock::new([AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize]),
             key_handle_mutex: Mutex::new(()),
         };
 
@@ -97,7 +97,7 @@ impl Provider {
         {
             // RwLock protection
             let mut key_slots = cryptoauthlib_provider.key_slots.write().unwrap();
-            for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS {
+            for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
                 if atecc_config_vec[slot as usize].id != slot {
                     error!("configuration mismatch: vector index does not match its id.");
                     return None;
