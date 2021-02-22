@@ -45,7 +45,7 @@ users = "0.11.0"
 libc = "0.2.77"
 anyhow = "1.0.32"
 #rust-cryptoauthlib = { version = "0.1.0", optional = true }
-rust-cryptoauthlib = { git = "ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git", branch = "cleaning_out_obsolete_code", optional = true }
+rust-cryptoauthlib = { git = "ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git", branch = "devel-0.2.0", optional = true }
 #rust-cryptoauthlib = { path = "../rust-cryptoauthlib/cryptoauthlib", optional = true }
 #cryptoauthlib-sys = { path = "../rust-cryptoauthlib/cryptoauthlib-sys", optional = true }
 prost = { version = "0.6.1", optional = true }
