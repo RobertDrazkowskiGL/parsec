@@ -3,11 +3,12 @@
 use super::Provider;
 use crate::key_info_managers;
 use crate::key_info_managers::{KeyInfo, KeyTriple, ManageKeyInfo};
+use parsec_interface::operations::psa_algorithm::{
+    Aead, AeadWithDefaultLengthTag, Algorithm, AsymmetricSignature, Cipher, FullLengthMac, Hash,
+    KeyAgreement, Mac, RawKeyAgreement, SignHash,
+};
+use parsec_interface::operations::psa_key_attributes::{Attributes, EccFamily, Type};
 use parsec_interface::requests::ResponseStatus;
-use parsec_interface::operations::psa_key_attributes::{ Attributes, EccFamily, Type};
-use parsec_interface::operations::psa_algorithm::{ Algorithm, Aead, AeadWithDefaultLengthTag, 
-    AsymmetricSignature, Cipher, FullLengthMac, Hash, KeyAgreement, Mac, RawKeyAgreement, SignHash};
-use rust_cryptoauthlib;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 /// Software status of a ATECC slot
@@ -56,8 +57,9 @@ impl Provider {
             Ok(key_info) => key_info,
             Err(response_status) => {
                 let error = std::format!(
-                    "Error getting the Key ID for triple:\n{}\n(error: {}), continuing...", 
-                    key_triple, response_status.to_string()
+                    "Error getting the Key ID for triple:\n{}\n(error: {}), continuing...",
+                    key_triple,
+                    response_status.to_string()
                 );
                 return Err(error);
             }
@@ -72,7 +74,8 @@ impl Provider {
             Err(err) => {
                 let error = std::format!(
                     "ATECC slot configuration mismatch for triple:\n{}\n(error: {}), continuing...",
-                    key_triple, err
+                    key_triple,
+                    err
                 );
                 return Err(error);
             }
@@ -93,9 +96,9 @@ impl Provider {
 
     // Check if software key attributes are compatible with hardware slot configuration
     fn key_info_vs_config(
-        &self, 
+        &self,
         key_info: &KeyInfo,
-        key_slot: AteccKeySlot
+        key_slot: AteccKeySlot,
     ) -> Result<(), ResponseStatus> {
         // let slot = key_info.id[0];
         // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
@@ -107,11 +110,11 @@ impl Provider {
         // (2) Check key_info.attributes.policy.usage_flags
         if !Provider::usage_flags_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
-        }        
+        }
         // (3) Check key_info.attributes.policy.permitted_algorithms
         if !Provider::algorithms_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
-        } 
+        }
 
         Ok(())
     }
@@ -125,7 +128,7 @@ impl Provider {
                 key_slot.config.key_type == rust_cryptoauthlib::KeyType::ShaOrText
             },
             Type::Hmac => {
-                key_slot.config.no_mac == false
+                !key_slot.config.no_mac == false
             },
             Type::Aes => {
                 key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes
@@ -249,30 +252,30 @@ impl Provider {
                 false
             },
             // KeyAgreement
-            Algorithm::KeyAgreement(KeyAgreement::Raw(RawKeyAgreement::Ecdh)) |
-            Algorithm::KeyAgreement(KeyAgreement::WithKeyDerivation {
+            Algorithm::KeyAgreement(KeyAgreement::Raw(RawKeyAgreement::Ecdh))
+            | Algorithm::KeyAgreement(KeyAgreement::WithKeyDerivation {
                 ka_alg: RawKeyAgreement::Ecdh,
                 ..
             }) => {
                 key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
             },
             // Nothing else is known to be supported by Atecc
-            _ => false, 
+            _ => false,
         }
     }
 
     /// Iterate through key_slots and find a free one with configuration matching attributes from key_info.
     /// If found, the slot is marked Busy.
-    pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8,u8), ResponseStatus> {
+    pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8, u8), ResponseStatus> {
         let mut key_slots = self.key_slots.write().unwrap();
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
             if KeySlotStatus::Free != key_slots[slot as usize].status {
                 continue;
             }
-            match self.key_info_vs_config(key_info,key_slots[slot as usize]) {
+            match self.key_info_vs_config(key_info, key_slots[slot as usize]) {
                 Ok(_) => {
                     key_slots[slot as usize].status = KeySlotStatus::Busy;
-                    return Ok((slot,0u8));
+                    return Ok((slot, 0u8));
                 },
                 Err(_) => continue,
             }
@@ -281,10 +284,7 @@ impl Provider {
     }
     
     /// todo
-    pub fn set_slot_status(
-        slot: &mut AteccKeySlot,
-        status: KeySlotStatus,
-    ) -> Result<(), String> {
+    pub fn set_slot_status(slot: &mut AteccKeySlot, status: KeySlotStatus) -> Result<(), String> {
         let err_msg = "Invalid status change.";
         match status {
             KeySlotStatus::Free => {
@@ -304,8 +304,7 @@ impl Provider {
                 }
             }
             KeySlotStatus::Locked => {
-                if slot.status == KeySlotStatus::Free ||
-                slot.status == KeySlotStatus::Busy {
+                if slot.status == KeySlotStatus::Free || slot.status == KeySlotStatus::Busy {
                     slot.status = status;
                     Ok(())
                 } else {
@@ -320,7 +319,10 @@ impl Provider {
         &self,
         key_triple: &KeyTriple,
     ) -> Result<(), String> {
-        let mut store_handle = self.key_info_store.write().expect("Key store lock poisoned");
+        let mut store_handle = self
+            .key_info_store
+            .write()
+            .expect("Key store lock poisoned");
         match store_handle.remove(&key_triple) {
             Ok(Some(key_info)) => {
                 let id = key_info.id[0]; // get key id to fn?
@@ -328,30 +330,24 @@ impl Provider {
                     &mut self.key_slots.write().unwrap()[id as usize],
                     KeySlotStatus::Free,
                 ) {
-                    Ok(()) => {
-                        Ok(())
-                    }
-                    Err(string) => {
-                        Err(string)
-                    }
+                    Ok(()) => Ok(()),
+                    Err(string) => Err(string),
                 }
             }
             Ok(None) => {
                 // handle
                 Ok(())
             }
-            Err(string) => {
-                Err(string)
-            }
+            Err(string) => Err(string),
         }
     }
 
-    fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8,u8)> {
+    fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8, u8)> {
         let slot = key_info.id[0];
         let mut key_slot = self.key_slots.write().unwrap()[slot as usize];
         key_slot.ref_count += 1;
         if 1 < key_slot.ref_count {
-            Err((slot,0u8))
+            Err((slot, 0u8))
         } else {
             Ok(())
         }
@@ -376,7 +372,7 @@ impl Provider {
                         attributes: key_info.attributes,
                     })
                 }
-            },
+            }
             Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist),
             Err(string) => Err(key_info_managers::to_response_status(string)),
         }
@@ -387,10 +383,12 @@ impl Provider {
         match attributes.key_type {
             Type::RawData => rust_cryptoauthlib::KeyType::ShaOrText,
             Type::Aes => rust_cryptoauthlib::KeyType::Aes,
-            Type::EccKeyPair { curve_family: EccFamily::SecpR1 } |
-            Type::EccPublicKey { curve_family: EccFamily::SecpR1 } => {
-                rust_cryptoauthlib::KeyType::P256EccKey
-            },
+            Type::EccKeyPair {
+                curve_family: EccFamily::SecpR1,
+            }
+            | Type::EccPublicKey { 
+                curve_family: EccFamily::SecpR1 ,
+            } => rust_cryptoauthlib::KeyType::P256EccKey,
             _ => rust_cryptoauthlib::KeyType::ShaOrText,
         }
     }

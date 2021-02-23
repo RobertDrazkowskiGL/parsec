@@ -6,8 +6,8 @@
 //! Library backed by the ATECCx08 cryptochip.
 use super::Provide;
 use crate::authenticators::ApplicationName;
-use crate::key_info_managers::ManageKeyInfo;
 use crate::key_info_managers::KeyTriple;
+use crate::key_info_managers::ManageKeyInfo;
 use crate::providers::cryptoauthlib::key_management::AteccKeySlot;
 use crate::providers::cryptoauthlib::key_management::KeySlotStatus::{Free, Locked};
 use derivative::Derivative;
@@ -18,17 +18,17 @@ use parsec_interface::operations::{list_clients, list_keys};
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use uuid::Uuid;
 
 use parsec_interface::operations::{
-    psa_generate_random, psa_hash_compare, psa_hash_compute, psa_generate_key, psa_destroy_key
+    psa_destroy_key, psa_generate_key, psa_generate_random, psa_hash_compare, psa_hash_compute,
 };
 
 mod generate_random;
 mod hash;
-mod key_operations;
 mod key_management;
+mod key_operations;
 
 const SUPPORTED_OPCODES: [Opcode; 5] = [
     Opcode::PsaGenerateKey,
@@ -62,7 +62,7 @@ impl Provider {
         };
         // ATECC is useful for non-trivial usage only when its configuration is locked
         let mut is_locked = false;
-        let err = device.configuration_is_locked(& mut is_locked);
+        let err = device.configuration_is_locked(&mut is_locked);
         match err {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 if !is_locked {
@@ -80,8 +80,9 @@ impl Provider {
         let cryptoauthlib_provider = Provider {
             device,
             key_info_store,
-            key_slots:
-                RwLock::new([AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize]),
+            key_slots: RwLock::new(
+                [AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize],
+            ),
             key_handle_mutex: Mutex::new(()),
         };
 
@@ -110,7 +111,7 @@ impl Provider {
                             _ => Free,
                         }
                     },
-                    config: atecc_config_vec[slot as usize].config
+                    config: atecc_config_vec[slot as usize].config,
                 }
             }
         }
@@ -129,7 +130,9 @@ impl Provider {
             match store_handle.get_all(ProviderID::CryptoAuthLib) {
                 Ok(key_triples) => {
                     for key_triple in key_triples.iter().cloned() {
-                        match cryptoauthlib_provider.validate_key_triple(&key_triple, &*store_handle) {
+                        match cryptoauthlib_provider
+                            .validate_key_triple(&key_triple, &*store_handle)
+                        {
                             Ok(None) => (),
                             Ok(Some(warning)) => warn!("{}", warning),
                             Err(err) => {
