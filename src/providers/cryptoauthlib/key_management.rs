@@ -4,7 +4,7 @@ use super::Provider;
 use crate::key_info_managers;
 use crate::key_info_managers::{KeyInfo, KeyTriple, ManageKeyInfo};
 use parsec_interface::requests::ResponseStatus;
-use parsec_interface::operations::psa_key_attributes::{ EccFamily, Type};
+use parsec_interface::operations::psa_key_attributes::{ Attributes, EccFamily, Type};
 use parsec_interface::operations::psa_algorithm::{ Algorithm, Aead, AeadWithDefaultLengthTag, 
     AsymmetricSignature, Cipher, FullLengthMac, Hash, KeyAgreement, Mac, RawKeyAgreement, SignHash};
 use rust_cryptoauthlib;
@@ -97,6 +97,9 @@ impl Provider {
         key_info: &KeyInfo,
         key_slot: AteccKeySlot
     ) -> Result<(), ResponseStatus> {
+        // let slot = key_info.id[0];
+        // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
+        //
         // (1) Check key_info.attributes.key_type
         if !Provider::key_type_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
@@ -277,7 +280,8 @@ impl Provider {
         Err(ResponseStatus::PsaErrorStorageFailure)
     }
     
-    fn set_slot_status(
+    /// todo
+    pub fn set_slot_status(
         slot: &mut AteccKeySlot,
         status: KeySlotStatus,
     ) -> Result<(), String> {
@@ -342,7 +346,6 @@ impl Provider {
         }
     }
 
-
     fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8,u8)> {
         let slot = key_info.id[0];
         let mut key_slot = self.key_slots.write().unwrap()[slot as usize];
@@ -376,6 +379,19 @@ impl Provider {
             },
             Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist),
             Err(string) => Err(key_info_managers::to_response_status(string)),
+        }
+    }
+
+    /// todo
+    pub fn get_calib_key_type(attributes: &Attributes) -> rust_cryptoauthlib::KeyType {
+        match attributes.key_type {
+            Type::RawData => rust_cryptoauthlib::KeyType::ShaOrText,
+            Type::Aes => rust_cryptoauthlib::KeyType::Aes,
+            Type::EccKeyPair { curve_family: EccFamily::SecpR1 } |
+            Type::EccPublicKey { curve_family: EccFamily::SecpR1 } => {
+                rust_cryptoauthlib::KeyType::P256EccKey
+            },
+            _ => rust_cryptoauthlib::KeyType::ShaOrText,
         }
     }
 }
