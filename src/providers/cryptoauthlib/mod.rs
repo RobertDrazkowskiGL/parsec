@@ -88,12 +88,14 @@ impl Provider {
 
         // Get the configuration from ATECC...
         let mut atecc_config_vec = Vec::<rust_cryptoauthlib::AtcaSlot>::new();
-        let err = cryptoauthlib_provider.device.get_config(& mut atecc_config_vec);
+        let err = cryptoauthlib_provider
+            .device
+            .get_config(&mut atecc_config_vec);
         if rust_cryptoauthlib::AtcaStatus::AtcaSuccess != err {
             error!("atecc_get_config failed: {}", err);
             return None;
         }
-        
+
         // ... and set the key slots configuration as read from hardware
         {
             // RwLock protection

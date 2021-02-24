@@ -3,8 +3,8 @@ use crate::authenticators::ApplicationName;
 use crate::key_info_managers::KeyTriple;
 
 use super::key_management::KeySlotStatus;
-use parsec_interface::operations::{psa_destroy_key, psa_generate_key};
 use log::error;
+use parsec_interface::operations::{psa_destroy_key, psa_generate_key};
 use parsec_interface::requests::{ProviderID, ResponseStatus, Result};
 
 impl Provider {
