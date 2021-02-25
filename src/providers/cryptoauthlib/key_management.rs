@@ -26,7 +26,7 @@ pub enum KeySlotStatus {
 #[derive(Copy, Clone, Debug)]
 /// Hardware slot information
 pub struct AteccKeySlot {
-    /// Diagnotic field. Number of key triples pointing at this slot
+    /// Diagnostic field. Number of key triples pointing at this slot
     pub ref_count: u8,
     /// Slot status
     pub status: KeySlotStatus,
@@ -104,22 +104,22 @@ impl Provider {
         // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
         //
         // (1) Check key_info.attributes.key_type
-        if !Provider::key_type_ok(key_info, key_slot) {
+        if !Provider::is_key_type_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         // (2) Check key_info.attributes.policy.usage_flags
-        if !Provider::usage_flags_ok(key_info, key_slot) {
+        if !Provider::is_usage_flags_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         // (3) Check key_info.attributes.policy.permitted_algorithms
-        if !Provider::algorithms_ok(key_info, key_slot) {
+        if !Provider::is_permitted_algorithms_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
 
         Ok(())
     }
 
-    fn key_type_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_key_type_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
         match key_info.attributes.key_type {
             Type::RawData => key_slot.config.key_type == rust_cryptoauthlib::KeyType::ShaOrText,
             Type::Hmac => !key_slot.config.no_mac,
@@ -130,6 +130,8 @@ impl Provider {
             | Type::EccPublicKey {
                 curve_family: EccFamily::SecpR1,
             } => {
+                // There may be a problem here: P256 private key has 256 bits (32 bytes),
+                // but the uncompressed public key is 512 bits (64 bytes)
                 key_info.attributes.bits == 256
                     && key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
             }
@@ -141,7 +143,7 @@ impl Provider {
         }
     }
 
-    fn usage_flags_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_usage_flags_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
         let mut result = true;
         if key_info.attributes.policy.usage_flags.export
             || key_info.attributes.policy.usage_flags.copy
@@ -170,7 +172,7 @@ impl Provider {
         result
     }
 
-    fn algorithms_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_permitted_algorithms_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
         match key_info.attributes.policy.permitted_algorithms {
             // Hash algorithm
             Algorithm::Hash(Hash::Sha256) => true,
