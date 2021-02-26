@@ -6,10 +6,9 @@
 //! Library backed by the ATECCx08 cryptochip.
 use super::Provide;
 use crate::authenticators::ApplicationName;
-use crate::key_info_managers::KeyTriple;
-use crate::key_info_managers::ManageKeyInfo;
+use crate::key_info_managers::{KeyInfoManagerClient, KeyTriple};
 use crate::providers::cryptoauthlib::key_management::AteccKeySlot;
-use crate::providers::cryptoauthlib::key_management::KeySlotStatus::{Free, Locked};
+use crate::providers::cryptoauthlib::key_management::KeySlotStatus;
 use derivative::Derivative;
 use log::{error, trace, warn};
 use parsec_interface::operations::list_keys::KeyInfo;
@@ -18,7 +17,7 @@ use parsec_interface::operations::{list_clients, list_keys};
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::RwLock;
 use uuid::Uuid;
 
 use parsec_interface::operations::{
@@ -44,15 +43,14 @@ const SUPPORTED_OPCODES: [Opcode; 5] = [
 pub struct Provider {
     device: rust_cryptoauthlib::AteccDevice,
     #[derivative(Debug = "ignore")]
-    key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
+    key_info_store: KeyInfoManagerClient,
     key_slots: RwLock<[AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize]>,
-    key_handle_mutex: Mutex<()>,
 }
 
 impl Provider {
     /// Creates and initialises an instance of CryptoAuthLibProvider
     fn new(
-        key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
+        key_info_store: KeyInfoManagerClient,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
     ) -> Option<Provider> {
         // First get the device, initialise it and communication channel with it
@@ -83,7 +81,6 @@ impl Provider {
             key_slots: RwLock::new(
                 [AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize],
             ),
-            key_handle_mutex: Mutex::new(()),
         };
 
         // Get the configuration from ATECC...
@@ -109,8 +106,8 @@ impl Provider {
                     ref_count: 0u8,
                     status: {
                         match atecc_config_vec[slot as usize].is_locked {
-                            true => Locked,
-                            _ => Free,
+                            true => KeySlotStatus::Locked,
+                            _ => KeySlotStatus::Free,
                         }
                     },
                     config: atecc_config_vec[slot as usize].config,
@@ -122,19 +119,11 @@ impl Provider {
         // Delete invalid entries or invalid mappings.
         // Mark the slots free/busy appropriately.
         {
-            // The local scope allows to drop store_handle and local_ids_handle in order to return
-            // the cryptoauthlib_provider.
-            let mut store_handle = cryptoauthlib_provider
-                .key_info_store
-                .write()
-                .expect("Key store lock poisoned");
             let mut to_remove: Vec<KeyTriple> = Vec::new();
-            match store_handle.get_all(ProviderID::CryptoAuthLib) {
+            match cryptoauthlib_provider.key_info_store.get_all() {
                 Ok(key_triples) => {
                     for key_triple in key_triples.iter().cloned() {
-                        match cryptoauthlib_provider
-                            .validate_key_triple(&key_triple, &*store_handle)
-                        {
+                        match cryptoauthlib_provider.validate_key_triple(&key_triple) {
                             Ok(None) => (),
                             Ok(Some(warning)) => warn!("{}", warning),
                             Err(err) => {
@@ -151,7 +140,10 @@ impl Provider {
                 }
             };
             for key_triple in to_remove.iter() {
-                if let Err(err) = store_handle.remove(key_triple) {
+                if let Err(err) = cryptoauthlib_provider
+                    .key_info_store
+                    .remove_key_info(key_triple)
+                {
                     error!("Key Info Manager error: {}", err);
                     return None;
                 }
@@ -243,7 +235,7 @@ impl Provide for Provider {
 #[derivative(Debug)]
 pub struct ProviderBuilder {
     #[derivative(Debug = "ignore")]
-    key_info_store: Option<Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>>,
+    key_info_store: Option<KeyInfoManagerClient>,
     device_type: Option<String>,
     iface_type: Option<String>,
     wake_delay: Option<u16>,
@@ -269,10 +261,7 @@ impl ProviderBuilder {
     }
 
     /// Add a KeyInfo manager
-    pub fn with_key_info_store(
-        mut self,
-        key_info_store: Arc<RwLock<dyn ManageKeyInfo + Send + Sync>>,
-    ) -> ProviderBuilder {
+    pub fn with_key_info_store(mut self, key_info_store: KeyInfoManagerClient) -> ProviderBuilder {
         self.key_info_store = Some(key_info_store);
 
         self

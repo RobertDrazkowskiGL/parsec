@@ -17,12 +17,8 @@ impl Provider {
         let key_attributes = op.attributes;
         let key_name = op.key_name;
         let key_triple = KeyTriple::new(app_name, ProviderID::CryptoAuthLib, key_name);
-        let store_handle = self
-            .key_info_store
-            .write()
-            .expect("Key store lock poisoned");
 
-        let key_info = match Provider::get_key_info(&key_triple, &*store_handle) {
+        let key_info = match self.get_key_info(&key_triple) {
             Ok(key_info) => key_info,
             Err(error) => return Err(error), // todo
         };
@@ -69,7 +65,7 @@ impl Provider {
         let key_name = op.key_name;
         let key_triple = KeyTriple::new(app_name, ProviderID::CryptoAuthLib, key_name);
 
-        match self.try_release_key(&key_triple) {
+        match self.key_info_store.remove_key_info(&key_triple) {
             Ok(_x) => Ok(psa_destroy_key::Result {}),
             Err(string) => {
                 error!("{}", string);

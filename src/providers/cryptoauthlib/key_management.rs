@@ -1,8 +1,7 @@
 // Copyright 2021 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
 use super::Provider;
-use crate::key_info_managers;
-use crate::key_info_managers::{KeyInfo, KeyTriple, ManageKeyInfo};
+use crate::key_info_managers::{KeyInfo, KeyTriple};
 use parsec_interface::operations::psa_algorithm::{
     Aead, AeadWithDefaultLengthTag, Algorithm, AsymmetricSignature, Cipher, FullLengthMac, Hash,
     KeyAgreement, Mac, RawKeyAgreement, SignHash,
@@ -26,7 +25,7 @@ pub enum KeySlotStatus {
 #[derive(Copy, Clone, Debug)]
 /// Hardware slot information
 pub struct AteccKeySlot {
-    /// Diagnotic field. Number of key triples pointing at this slot
+    /// Diagnostic field. Number of key triples pointing at this slot
     pub ref_count: u8,
     /// Slot status
     pub status: KeySlotStatus,
@@ -42,18 +41,14 @@ impl Default for AteccKeySlot {
 
 impl Provider {
     /// Validate KeyInfo data store entry against hardware
-    pub fn validate_key_triple(
-        &self,
-        key_triple: &KeyTriple,
-        store_handle: &dyn ManageKeyInfo,
-    ) -> Result<Option<String>, String> {
+    pub fn validate_key_triple(&self, key_triple: &KeyTriple) -> Result<Option<String>, String> {
         // Get CryptoAuthLibProvider mapping of key triple to key info and check
         // (1) if the mapping is between two valid entities - drop key triple if not
         // (2) if the key info matches ATECC configuration - drop key triple if not
         // (3) if there are no two key triples mapping to a single ATECC slot - warning only ATM
 
         // check (1)
-        let key_info = match Provider::get_key_info(key_triple, &*store_handle) {
+        let key_info = match self.get_key_info(key_triple) {
             Ok(key_info) => key_info,
             Err(response_status) => {
                 let error = std::format!(
@@ -104,22 +99,22 @@ impl Provider {
         // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
         //
         // (1) Check key_info.attributes.key_type
-        if !Provider::key_type_ok(key_info, key_slot) {
+        if !Provider::is_key_type_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         // (2) Check key_info.attributes.policy.usage_flags
-        if !Provider::usage_flags_ok(key_info, key_slot) {
+        if !Provider::is_usage_flags_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         // (3) Check key_info.attributes.policy.permitted_algorithms
-        if !Provider::algorithms_ok(key_info, key_slot) {
+        if !Provider::is_permitted_algorithms_ok(key_info, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
 
         Ok(())
     }
 
-    fn key_type_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_key_type_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
         match key_info.attributes.key_type {
             Type::RawData => key_slot.config.key_type == rust_cryptoauthlib::KeyType::ShaOrText,
             Type::Hmac => !key_slot.config.no_mac,
@@ -130,6 +125,8 @@ impl Provider {
             | Type::EccPublicKey {
                 curve_family: EccFamily::SecpR1,
             } => {
+                // There may be a problem here: P256 private key has 256 bits (32 bytes),
+                // but the uncompressed public key is 512 bits (64 bytes)
                 key_info.attributes.bits == 256
                     && key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
             }
@@ -141,7 +138,7 @@ impl Provider {
         }
     }
 
-    fn usage_flags_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_usage_flags_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
         let mut result = true;
         if key_info.attributes.policy.usage_flags.export
             || key_info.attributes.policy.usage_flags.copy
@@ -170,7 +167,7 @@ impl Provider {
         result
     }
 
-    fn algorithms_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_permitted_algorithms_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
         match key_info.attributes.policy.permitted_algorithms {
             // Hash algorithm
             Algorithm::Hash(Hash::Sha256) => true,
@@ -303,29 +300,21 @@ impl Provider {
     }
 
     /// todo
-    pub fn try_release_key(&self, key_triple: &KeyTriple) -> Result<(), String> {
-        let mut store_handle = self
-            .key_info_store
-            .write()
-            .expect("Key store lock poisoned");
-        match store_handle.remove(&key_triple) {
-            Ok(Some(key_info)) => {
-                let id = key_info.id[0]; // get key id to fn?
-                match Provider::set_slot_status(
-                    &mut self.key_slots.write().unwrap()[id as usize],
-                    KeySlotStatus::Free,
-                ) {
-                    Ok(()) => Ok(()),
-                    Err(string) => Err(string),
-                }
-            }
-            Ok(None) => {
-                // handle
-                Ok(())
-            }
-            Err(string) => Err(string),
-        }
-    }
+    // pub fn try_release_key(&self, key_triple: &KeyTriple) -> Result<(), String> {
+    //     match self.key_info_store.remove_key_info(key_triple) {
+    //         Ok(key_info) => {
+    //             let id = key_info.id[0]; // get key id to fn?
+    //             match Provider::set_slot_status(
+    //                 &mut self.key_slots.write().unwrap()[id as usize],
+    //                 KeySlotStatus::Free,
+    //             ) {
+    //                 Ok(()) => Ok(()),
+    //                 Err(string) => Err(string),
+    //             }
+    //         }
+    //         Err(string) => Err(string),
+    //     }
+    // }
 
     fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8, u8)> {
         let slot = key_info.id[0];
@@ -339,28 +328,13 @@ impl Provider {
     }
 
     /// Get KeyInfo struct from ManageKeyInfo data store handle matching given KeyTriple
-    pub fn get_key_info(
-        key_triple: &KeyTriple,
-        store_handle: &dyn ManageKeyInfo,
-    ) -> Result<KeyInfo, ResponseStatus> {
-        match store_handle.get(key_triple) {
-            Ok(Some(key_info)) => {
-                if key_info.id.is_empty() {
-                    format_error!(
-                        "Stored Key ID is not valid.",
-                        ResponseStatus::KeyInfoManagerError
-                    );
-                    Err(ResponseStatus::KeyInfoManagerError)
-                } else {
-                    Ok(KeyInfo {
-                        id: key_info.id.to_vec(),
-                        attributes: key_info.attributes,
-                    })
-                }
-            }
-            Ok(None) => Err(ResponseStatus::PsaErrorDoesNotExist),
-            Err(string) => Err(key_info_managers::to_response_status(string)),
-        }
+    pub fn get_key_info(&self, key_triple: &KeyTriple) -> Result<KeyInfo, ResponseStatus> {
+        let key_info_id = self.key_info_store.get_key_id(key_triple)?;
+        let key_info_attributes = self.key_info_store.get_key_attributes(key_triple)?;
+        Ok(KeyInfo {
+            id: key_info_id,
+            attributes: key_info_attributes,
+        })
     }
 
     /// todo
