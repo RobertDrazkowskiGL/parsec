@@ -42,6 +42,7 @@ const SUPPORTED_OPCODES: [Opcode; 5] = [
 #[derivative(Debug)]
 pub struct Provider {
     device: rust_cryptoauthlib::AteccDevice,
+    provider_id: ProviderID,
     #[derivative(Debug = "ignore")]
     key_info_store: KeyInfoManagerClient,
     key_slots: RwLock<[AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize]>,
@@ -58,6 +59,7 @@ impl Provider {
             Ok(x) => x,
             _ => return None,
         };
+        let provider_id = ProviderID::CryptoAuthLib;
         // ATECC is useful for non-trivial usage only when its configuration is locked
         let mut is_locked = false;
         let err = device.configuration_is_locked(&mut is_locked);
@@ -77,6 +79,7 @@ impl Provider {
         // This will be returned when everything succeedes
         let cryptoauthlib_provider = Provider {
             device,
+            provider_id,
             key_info_store,
             key_slots: RwLock::new(
                 [AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize],
