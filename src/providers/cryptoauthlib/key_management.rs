@@ -64,7 +64,7 @@ impl Provider {
             let lock = self.key_slots.read().unwrap();
             lock[key_info.id[0] as usize]
         };
-        match self.key_info_vs_config(&key_info, key_slot) {
+        match self.key_attr_vs_config(&key_info.attributes, key_slot) {
             Ok(_) => (),
             Err(err) => {
                 let error = std::format!(
@@ -90,32 +90,32 @@ impl Provider {
     }
 
     // Check if software key attributes are compatible with hardware slot configuration
-    fn key_info_vs_config(
+    fn key_attr_vs_config(
         &self,
-        key_info: &KeyInfo,
+        key_attr: &Attributes,
         key_slot: AteccKeySlot,
     ) -> Result<(), ResponseStatus> {
         // let slot = key_info.id[0];
         // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
         //
-        // (1) Check key_info.attributes.key_type
-        if !Provider::is_key_type_ok(key_info, key_slot) {
+        // (1) Check attributes.key_type
+        if !Provider::is_key_type_ok(key_attr, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
-        // (2) Check key_info.attributes.policy.usage_flags
-        if !Provider::is_usage_flags_ok(key_info, key_slot) {
+        // (2) Check attributes.policy.usage_flags
+        if !Provider::is_usage_flags_ok(key_attr, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
-        // (3) Check key_info.attributes.policy.permitted_algorithms
-        if !Provider::is_permitted_algorithms_ok(key_info, key_slot) {
+        // (3) Check attributes.policy.permitted_algorithms
+        if !Provider::is_permitted_algorithms_ok(key_attr, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
 
         Ok(())
     }
 
-    fn is_key_type_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
-        match key_info.attributes.key_type {
+    fn is_key_type_ok(key_attr: &Attributes, key_slot: AteccKeySlot) -> bool {
+        match key_attr.key_type {
             Type::RawData => key_slot.config.key_type == rust_cryptoauthlib::KeyType::ShaOrText,
             Type::Hmac => !key_slot.config.no_mac,
             Type::Aes => key_slot.config.key_type == rust_cryptoauthlib::KeyType::Aes,
@@ -127,7 +127,7 @@ impl Provider {
             } => {
                 // There may be a problem here: P256 private key has 256 bits (32 bytes),
                 // but the uncompressed public key is 512 bits (64 bytes)
-                key_info.attributes.bits == 256
+                key_attr.bits == 256
                     && key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
             }
             Type::Derive | Type::DhKeyPair { .. } | Type::DhPublicKey { .. } => {
@@ -138,17 +138,15 @@ impl Provider {
         }
     }
 
-    fn is_usage_flags_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
+    fn is_usage_flags_ok(key_attr: &Attributes, key_slot: AteccKeySlot) -> bool {
         let mut result = true;
-        if key_info.attributes.policy.usage_flags.export
-            || key_info.attributes.policy.usage_flags.copy
-        {
+        if key_attr.policy.usage_flags.export || key_attr.policy.usage_flags.copy {
             result &= match key_slot.config.key_type {
                 rust_cryptoauthlib::KeyType::Aes => true,
                 rust_cryptoauthlib::KeyType::P256EccKey => {
                     key_slot.config.pub_info
                         && matches!(
-                            key_info.attributes.key_type,
+                            key_attr.key_type,
                             Type::EccPublicKey { .. } | Type::DhPublicKey { .. }
                         )
                 }
@@ -158,17 +156,15 @@ impl Provider {
         if !result {
             return false;
         }
-        if key_info.attributes.policy.usage_flags.sign_hash
-            || key_info.attributes.policy.usage_flags.sign_message
-        {
+        if key_attr.policy.usage_flags.sign_hash || key_attr.policy.usage_flags.sign_message {
             result &= key_slot.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey;
             result &= key_slot.config.ecc_key_attr.is_private;
         }
         result
     }
 
-    fn is_permitted_algorithms_ok(key_info: &KeyInfo, key_slot: AteccKeySlot) -> bool {
-        match key_info.attributes.policy.permitted_algorithms {
+    fn is_permitted_algorithms_ok(key_attr: &Attributes, key_slot: AteccKeySlot) -> bool {
+        match key_attr.policy.permitted_algorithms {
             // Hash algorithm
             Algorithm::Hash(Hash::Sha256) => true,
             // Mac::Hmac algorithm
@@ -249,15 +245,15 @@ impl Provider {
         }
     }
 
-    /// Iterate through key_slots and find a free one with configuration matching attributes from key_info.
+    /// Iterate through key_slots and find a free one with configuration matching attributes.
     /// If found, the slot is marked Busy.
-    pub fn find_suitable_slot(&self, key_info: &KeyInfo) -> Result<(u8, u8), ResponseStatus> {
+    pub fn find_suitable_slot(&self, key_attr: &Attributes) -> Result<(u8, u8), ResponseStatus> {
         let mut key_slots = self.key_slots.write().unwrap();
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
             if KeySlotStatus::Free != key_slots[slot as usize].status {
                 continue;
             }
-            match self.key_info_vs_config(key_info, key_slots[slot as usize]) {
+            match self.key_attr_vs_config(key_attr, key_slots[slot as usize]) {
                 Ok(_) => {
                     key_slots[slot as usize].status = KeySlotStatus::Busy;
                     return Ok((slot, 0u8));
@@ -268,53 +264,45 @@ impl Provider {
         Err(ResponseStatus::PsaErrorStorageFailure)
     }
 
-    /// todo
-    pub fn set_slot_status(slot: &mut AteccKeySlot, status: KeySlotStatus) -> Result<(), String> {
-        let err_msg = "Invalid status change.";
+    /// Set status of AteccKeySlot
+    pub fn set_slot_status(
+        &self,
+        slot_id: usize,
+        status: KeySlotStatus,
+    ) -> Result<(), ResponseStatus> {
+        let mut key_slots = self.key_slots.write().unwrap();
+        if key_slots[slot_id].status == KeySlotStatus::Locked {
+            return Err(ResponseStatus::PsaErrorNotPermitted);
+        }
         match status {
             KeySlotStatus::Free => {
-                if slot.status == KeySlotStatus::Busy {
-                    slot.status = status;
+                if key_slots[slot_id].status == KeySlotStatus::Busy {
+                    key_slots[slot_id].status = status;
                     Ok(())
                 } else {
-                    Err(err_msg.to_string())
+                    Err(ResponseStatus::PsaErrorStorageFailure)
                 }
             }
             KeySlotStatus::Busy => {
-                if slot.status == KeySlotStatus::Free {
-                    slot.status = status;
+                if key_slots[slot_id].status == KeySlotStatus::Free {
+                    key_slots[slot_id].status = status;
                     Ok(())
                 } else {
-                    Err(err_msg.to_string())
+                    Err(ResponseStatus::PsaErrorStorageFailure)
                 }
             }
             KeySlotStatus::Locked => {
-                if slot.status == KeySlotStatus::Free || slot.status == KeySlotStatus::Busy {
-                    slot.status = status;
+                if key_slots[slot_id].status == KeySlotStatus::Free
+                    || key_slots[slot_id].status == KeySlotStatus::Busy
+                {
+                    key_slots[slot_id].status = status;
                     Ok(())
                 } else {
-                    Err(err_msg.to_string())
+                    Err(ResponseStatus::PsaErrorStorageFailure)
                 }
             }
         }
     }
-
-    /// todo
-    // pub fn try_release_key(&self, key_triple: &KeyTriple) -> Result<(), String> {
-    //     match self.key_info_store.remove_key_info(key_triple) {
-    //         Ok(key_info) => {
-    //             let id = key_info.id[0]; // get key id to fn?
-    //             match Provider::set_slot_status(
-    //                 &mut self.key_slots.write().unwrap()[id as usize],
-    //                 KeySlotStatus::Free,
-    //             ) {
-    //                 Ok(()) => Ok(()),
-    //                 Err(string) => Err(string),
-    //             }
-    //         }
-    //         Err(string) => Err(string),
-    //     }
-    // }
 
     fn ref_counter_update(&self, key_info: &KeyInfo) -> Result<(), (u8, u8)> {
         let slot = key_info.id[0];
@@ -337,7 +325,7 @@ impl Provider {
         })
     }
 
-    /// todo
+    /// Get CryptoAuthLib's key type based on PARSEC's KeyInfoManager type.
     pub fn get_calib_key_type(attributes: &Attributes) -> rust_cryptoauthlib::KeyType {
         match attributes.key_type {
             Type::RawData => rust_cryptoauthlib::KeyType::ShaOrText,
@@ -348,7 +336,7 @@ impl Provider {
             | Type::EccPublicKey {
                 curve_family: EccFamily::SecpR1,
             } => rust_cryptoauthlib::KeyType::P256EccKey,
-            _ => rust_cryptoauthlib::KeyType::ShaOrText,
+            _ => rust_cryptoauthlib::KeyType::Rfu,
         }
     }
 }
