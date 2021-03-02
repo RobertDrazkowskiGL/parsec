@@ -95,9 +95,6 @@ impl Provider {
         key_attr: &Attributes,
         key_slot: AteccKeySlot,
     ) -> Result<(), ResponseStatus> {
-        // let slot = key_info.id[0];
-        // let mut key_slot = self.key_slots.read().unwrap()[slot as usize];
-        //
         // (1) Check attributes.key_type
         if !Provider::is_key_type_ok(key_attr, key_slot) {
             return Err(ResponseStatus::PsaErrorNotSupported);
