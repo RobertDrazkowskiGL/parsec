@@ -233,7 +233,7 @@ impl Provide for Provider {
     fn psa_import_key(
         &self,
         app_name: ApplicationName,
-        op: psa_destroy_key::Operation,
+        op: psa_import_key::Operation,
     ) -> Result<psa_import_key::Result> {
         trace!("psa_import_key ingress");
         self.psa_import_key_internal(app_name, op)

@@ -4,6 +4,7 @@ use crate::authenticators::ApplicationName;
 use log::error;
 use parsec_interface::operations::{psa_destroy_key, psa_generate_key, psa_import_key};
 use parsec_interface::requests::{ResponseStatus, Result};
+use parsec_interface::secrecy::ExposeSecret;
 
 impl Provider {
     pub(super) fn psa_generate_key_internal(
@@ -81,6 +82,9 @@ impl Provider {
         }
     }
 
+    fn import_key(key_data: &[u8]) {
+        return;
+    }
     // pub fn import_key(&self, key_type: KeyType, key_data: &[u8], slot_number: u8) -> AtcaStatus
     pub(super) fn psa_import_key_internal(
         &self,
@@ -106,15 +110,15 @@ impl Provider {
                 return Err(error);
             }
         };
-        let key_data = op.data;
+        let key_data_r = op.data.expose_secret();
 
-        match self.device.import_key(key_type, &key_data, slot_id) {
+        match self.device.import_key(key_type, key_data_r, slot_id) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 match self
                     .key_info_store
                     .insert_key_info(key_triple, &slot_id, key_attributes)
                 {
-                    Ok(()) => Ok(psa_generate_key::Result {}),
+                    Ok(()) => Ok(psa_import_key::Result {}),
                     Err(error) => {
                         error!("Insert key triple to KeyInfoManager failed. {}", error);
                         Err(error)
