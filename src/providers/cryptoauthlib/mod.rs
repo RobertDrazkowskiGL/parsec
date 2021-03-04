@@ -7,8 +7,7 @@
 use super::Provide;
 use crate::authenticators::ApplicationName;
 use crate::key_info_managers::{KeyInfoManagerClient, KeyTriple};
-use crate::providers::cryptoauthlib::key_management::AteccKeySlot;
-use crate::providers::cryptoauthlib::key_management::KeySlotStatus;
+use crate::providers::cryptoauthlib::key_slot_storage::KeySlotStorage;
 use derivative::Derivative;
 use log::{error, trace, warn};
 use parsec_interface::operations::list_keys::KeyInfo;
@@ -17,7 +16,6 @@ use parsec_interface::operations::{list_clients, list_keys};
 use parsec_interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
-use std::sync::RwLock;
 use uuid::Uuid;
 
 use parsec_interface::operations::{
@@ -28,6 +26,8 @@ mod generate_random;
 mod hash;
 mod key_management;
 mod key_operations;
+mod key_slot;
+mod key_slot_storage;
 
 const SUPPORTED_OPCODES: [Opcode; 5] = [
     Opcode::PsaGenerateKey,
@@ -45,7 +45,7 @@ pub struct Provider {
     provider_id: ProviderID,
     #[derivative(Debug = "ignore")]
     key_info_store: KeyInfoManagerClient,
-    key_slots: RwLock<[AteccKeySlot; rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize]>,
+    key_slots: KeySlotStorage,
 }
 
 impl Provider {
@@ -81,9 +81,7 @@ impl Provider {
             device,
             provider_id,
             key_info_store,
-            key_slots: RwLock::new(
-                [AteccKeySlot::default(); rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT as usize],
-            ),
+            key_slots: KeySlotStorage::new(),
         };
 
         // Get the configuration from ATECC...
@@ -97,59 +95,58 @@ impl Provider {
         }
 
         // ... and set the key slots configuration as read from hardware
+        if let Err(err) = cryptoauthlib_provider
+            .key_slots
+            .set_hw_config(&atecc_config_vec)
         {
-            // RwLock protection
-            let mut key_slots = cryptoauthlib_provider.key_slots.write().unwrap();
-            for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
-                if atecc_config_vec[slot as usize].id != slot {
-                    error!("configuration mismatch: vector index does not match its id.");
-                    return None;
-                }
-                key_slots[slot as usize] = AteccKeySlot {
-                    ref_count: 0u8,
-                    status: {
-                        match atecc_config_vec[slot as usize].is_locked {
-                            true => KeySlotStatus::Locked,
-                            _ => KeySlotStatus::Free,
-                        }
-                    },
-                    config: atecc_config_vec[slot as usize].config,
-                }
-            }
+            error!("Applying hardware configuration failed: {}", err);
+            return None;
         }
 
         // Validate KeyInfo data store against hardware configuration.
         // Delete invalid entries or invalid mappings.
         // Mark the slots free/busy appropriately.
-        {
-            let mut to_remove: Vec<KeyTriple> = Vec::new();
-            match cryptoauthlib_provider.key_info_store.get_all() {
-                Ok(key_triples) => {
-                    for key_triple in key_triples.iter().cloned() {
-                        match cryptoauthlib_provider.validate_key_triple(&key_triple) {
-                            Ok(None) => (),
-                            Ok(Some(warning)) => warn!("{}", warning),
-                            Err(err) => {
-                                error!("{}", err);
-                                to_remove.push(key_triple.clone());
-                            }
+        let mut to_remove: Vec<KeyTriple> = Vec::new();
+        match cryptoauthlib_provider.key_info_store.get_all() {
+            Ok(key_triples) => {
+                for key_triple in key_triples.iter().cloned() {
+                    let key_info = match cryptoauthlib_provider.get_key_info(&key_triple) {
+                        Ok(x) => x,
+                        Err(err) => {
+                            error!("Error getting the Key ID for triple:\n{}\n(error: {}), continuing...",
+                                key_triple,
+                                err
+                            );
+                            to_remove.push(key_triple.clone());
+                            continue;
                         }
-                        continue;
+                    };
+                    match cryptoauthlib_provider
+                        .key_slots
+                        .key_validate_and_mark_busy(&key_info)
+                    {
+                        Ok(None) => (),
+                        Ok(Some(warning)) => warn!("{} for key triple {:?}", warning, key_triple),
+                        Err(err) => {
+                            error!("{} for key triple {:?}", err, key_triple);
+                            to_remove.push(key_triple.clone());
+                            continue;
+                        }
                     }
                 }
-                Err(err) => {
-                    error!("Key Info Manager error: {}", err);
-                    return None;
-                }
-            };
-            for key_triple in to_remove.iter() {
-                if let Err(err) = cryptoauthlib_provider
-                    .key_info_store
-                    .remove_key_info(key_triple)
-                {
-                    error!("Key Info Manager error: {}", err);
-                    return None;
-                }
+            }
+            Err(err) => {
+                error!("Key Info Manager error: {}", err);
+                return None;
+            }
+        };
+        for key_triple in to_remove.iter() {
+            if let Err(err) = cryptoauthlib_provider
+                .key_info_store
+                .remove_key_info(key_triple)
+            {
+                error!("Key Info Manager error: {}", err);
+                return None;
             }
         }
 
