@@ -1,4 +1,4 @@
-use super::key_management::KeySlotStatus;
+use super::key_slot::KeySlotStatus;
 use super::Provider;
 use crate::authenticators::ApplicationName;
 use log::error;
@@ -24,7 +24,7 @@ impl Provider {
         let key_attributes = op.attributes;
         let key_type = Provider::get_calib_key_type(&key_attributes);
         let slot_id = match self.find_suitable_slot(&key_attributes) {
-            Ok((slot, _step)) => slot,
+            Ok(slot) => slot,
             Err(error) => {
                 error!("Failed to find suitable storage slot for key. {}", error);
                 return Err(error);
