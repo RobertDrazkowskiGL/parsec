@@ -86,10 +86,6 @@ impl Provider {
         }
     }
 
-    fn import_key(key_data: &[u8]) {
-        return;
-    }
-    // pub fn import_key(&self, key_type: KeyType, key_data: &[u8], slot_number: u8) -> AtcaStatus
     pub(super) fn psa_import_key_internal(
         &self,
         app_name: ApplicationName,
@@ -108,7 +104,7 @@ impl Provider {
         let key_attributes = op.attributes;
         let key_type = Provider::get_calib_key_type(&key_attributes);
         let slot_id = match self.find_suitable_slot(&key_attributes) {
-            Ok((slot, _step)) => slot,
+            Ok(slot) => slot,
             Err(error) => {
                 error!("Failed to find suitable storage slot for key. {}", error);
                 return Err(error);
