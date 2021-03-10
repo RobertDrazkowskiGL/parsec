@@ -20,9 +20,10 @@ use uuid::Uuid;
 
 use parsec_interface::operations::{
     psa_destroy_key, psa_generate_key, psa_generate_random, psa_hash_compare, psa_hash_compute,
-    psa_import_key,
+    psa_import_key, psa_sign_hash,
 };
 
+mod asym_sign;
 mod generate_random;
 mod hash;
 mod key_management;
@@ -284,6 +285,15 @@ impl Provide for Provider {
     ) -> Result<psa_import_key::Result> {
         trace!("psa_import_key ingress");
         self.psa_import_key_internal(app_name, op)
+    }
+
+    fn psa_sign_hash(
+        &self,
+        app_name: ApplicationName,
+        op: psa_sign_hash::Operation,
+    ) -> Result<psa_sign_hash::Result> {
+        trace!("psa_sign_hash ingress");
+        self.psa_sign_hash_internal(app_name, op)
     }
 }
 
