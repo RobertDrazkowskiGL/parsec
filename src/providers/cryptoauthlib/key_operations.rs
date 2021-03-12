@@ -108,33 +108,52 @@ impl Provider {
         };
         let key_data_r = op.data.expose_secret();
 
-        match self.device.import_key(key_type, key_data_r, slot_id) {
+        let status = self.device.import_key(key_type, key_data_r, slot_id);
+        let error_status: rust_cryptoauthlib::AtcaStatus;
+        match status {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 match self
                     .key_info_store
                     .insert_key_info(key_triple, &slot_id, key_attributes)
                 {
-                    Ok(()) => Ok(psa_import_key::Result {}),
+                    Ok(()) => {
+                        return Ok(psa_import_key::Result {});
+                    }
                     Err(error) => {
                         error!("Insert key triple to KeyInfoManager failed. {}", error);
-                        Err(error)
+                        return Err(error);
                     }
                 }
             }
-            _ => match self.set_slot_status(slot_id as usize, KeySlotStatus::Free) {
-                Ok(()) => {
-                    let error = ResponseStatus::PsaErrorInvalidArgument;
-                    error!("Key import failed. Storage slot status updated. {}", error);
-                    Err(error)
-                }
-                Err(error) => {
-                    error!(
-                        "Key import failed. Storage slot status failed to update. {}",
-                        error
-                    );
-                    Err(error)
-                }
-            },
+            rust_cryptoauthlib::AtcaStatus::AtcaInvalidSize => {
+                error_status = rust_cryptoauthlib::AtcaStatus::AtcaInvalidSize;
+            }
+            rust_cryptoauthlib::AtcaStatus::AtcaInvalidId => {
+                error_status = rust_cryptoauthlib::AtcaStatus::AtcaInvalidId;
+            }
+            rust_cryptoauthlib::AtcaStatus::AtcaBadParam => {
+                error_status = rust_cryptoauthlib::AtcaStatus::AtcaBadParam;
+            }
+            _ => {
+                error_status = rust_cryptoauthlib::AtcaStatus::AtcaUnimplemented;
+            }
+        }
+        match self.set_slot_status(slot_id as usize, KeySlotStatus::Free) {
+            Ok(()) => {
+                let error = ResponseStatus::PsaErrorInvalidArgument;
+                error!(
+                    "Key import failed. {}. Storage slot status updated.",
+                    error_status
+                );
+                Err(error)
+            }
+            Err(error) => {
+                error!(
+                    "Key import failed. {}. Storage slot status failed to update.",
+                    error_status
+                );
+                Err(error)
+            }
         }
     }
 }
