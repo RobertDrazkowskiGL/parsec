@@ -7,7 +7,7 @@ use parsec_client::core::interface::operations::psa_algorithm::{
 use parsec_client::core::interface::operations::psa_key_attributes::{
     Attributes, Lifetime, Policy, Type, UsageFlags,
 };
-use parsec_client::core::interface::requests::{ProviderID, ResponseStatus};
+use parsec_client::core::interface::requests::{Opcode, ProviderID, ResponseStatus};
 
 // Ignored as only RSA key types are supported for now.
 #[ignore]
@@ -16,6 +16,9 @@ fn wrong_type() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_type");
 
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
     // Wrong key type
     let key_type = Type::Derive;
     let permitted_algorithm =
@@ -58,6 +61,9 @@ fn wrong_usage_flags() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_usage_flags");
 
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
     let key_type = Type::RsaKeyPair;
     let permitted_algorithm =
         Algorithm::AsymmetricSignature(AsymmetricSignature::RsaPkcs1v15Sign {
@@ -100,6 +106,9 @@ fn wrong_permitted_algorithm() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_permitted_algorithm");
 
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
     let key_type = Type::RsaKeyPair;
     // Do not permit RSA PKCS 1v15 signing algorithm with SHA-256.
     let permitted_algorithm =

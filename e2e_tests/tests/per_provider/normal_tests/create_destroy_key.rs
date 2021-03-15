@@ -3,6 +3,7 @@
 use e2e_tests::TestClient;
 use parsec_client::core::interface::requests::ResponseStatus;
 use parsec_client::core::interface::requests::Result;
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 use picky_asn1_x509::RSAPublicKey;
 
 #[test]
@@ -11,21 +12,24 @@ fn create_and_destroy() -> Result<()> {
     client.do_not_destroy_keys();
     let key_name = String::from("create_and_destroy");
 
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
     client.generate_rsa_sign_key(key_name.clone())?;
+    #[cfg(feature = "cryptoauthlib-provider")]
+    client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
     client.destroy_key(key_name)
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
+// This test nakes no sense for calib - it does not destroy created keys
 #[test]
 fn create_twice() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("create_twice");
-
     client.generate_rsa_sign_key(key_name.clone())?;
     let status = client
         .generate_rsa_sign_key(key_name)
         .expect_err("A key with the same name can not be created twice.");
     assert_eq!(status, ResponseStatus::PsaErrorAlreadyExists);
-
     Ok(())
 }
 
@@ -40,6 +44,7 @@ fn destroy_without_create() {
     assert_eq!(status, ResponseStatus::PsaErrorDoesNotExist);
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
 fn create_destroy_and_operation() -> Result<()> {
     let mut client = TestClient::new();
@@ -64,13 +69,22 @@ fn create_destroy_twice() -> Result<()> {
     let key_name = String::from("create_destroy_twice_1");
     let key_name_2 = String::from("create_destroy_twice_2");
 
-    client.generate_rsa_sign_key(key_name.clone())?;
-    client.generate_rsa_sign_key(key_name_2.clone())?;
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
+    {
+        client.generate_rsa_sign_key(key_name.clone())?;
+        client.generate_rsa_sign_key(key_name_2.clone())?;
+    }
+    #[cfg(feature = "cryptoauthlib-provider")]
+    {
+        client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
+        client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name_2.clone())?;
+    }
 
     client.destroy_key(key_name)?;
     client.destroy_key(key_name_2)
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
 fn generate_public_rsa_check_modulus() -> Result<()> {
     // As stated in the operation page, the public exponent of RSA key pair should be 65537
@@ -88,6 +102,7 @@ fn generate_public_rsa_check_modulus() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
 fn failed_created_key_should_be_removed() -> Result<()> {
     let mut client = TestClient::new();
