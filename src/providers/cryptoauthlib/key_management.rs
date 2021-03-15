@@ -1,7 +1,6 @@
 // Copyright 2021 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
 use super::Provider;
-use crate::key_info_managers::{KeyInfo, KeyTriple};
 use crate::providers::cryptoauthlib::key_slot::KeySlotStatus;
 use parsec_interface::operations::psa_key_attributes::{Attributes, EccFamily, Type};
 use parsec_interface::requests::ResponseStatus;
@@ -23,16 +22,6 @@ impl Provider {
         status: KeySlotStatus,
     ) -> Result<(), ResponseStatus> {
         self.key_slots.set_slot_status(slot_id, status)
-    }
-
-    /// Get KeyInfo struct from ManageKeyInfo data store handle matching given KeyTriple
-    pub fn get_key_info(&self, key_triple: &KeyTriple) -> Result<KeyInfo, ResponseStatus> {
-        let key_info_id = self.key_info_store.get_key_id(key_triple)?;
-        let key_info_attributes = self.key_info_store.get_key_attributes(key_triple)?;
-        Ok(KeyInfo {
-            id: key_info_id,
-            attributes: key_info_attributes,
-        })
     }
 
     /// Get CryptoAuthLib's key type based on PARSEC's KeyInfoManager type.

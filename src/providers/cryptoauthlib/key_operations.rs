@@ -1,7 +1,7 @@
 use super::key_slot::KeySlotStatus;
 use super::Provider;
 use crate::authenticators::ApplicationName;
-use log::error;
+use log::{error, warn, info};
 use parsec_interface::operations::{psa_destroy_key, psa_generate_key};
 use parsec_interface::requests::{ResponseStatus, Result};
 
@@ -26,7 +26,7 @@ impl Provider {
         let slot_id = match self.find_suitable_slot(&key_attributes) {
             Ok(slot) => slot,
             Err(error) => {
-                error!("Failed to find suitable storage slot for key. {}", error);
+                warn!("Failed to find suitable storage slot for key. {}", error);
                 return Err(error);
             }
         };
@@ -71,11 +71,25 @@ impl Provider {
     ) -> Result<psa_destroy_key::Result> {
         let key_name = op.key_name;
         let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let key_info_id = self.key_info_store.get_key_id::<u8>(&key_triple);
+        match key_info_id {
+            Ok(x) => {
+                match self.set_slot_status(x as usize, KeySlotStatus::Free) {
+                    Ok(_) => { }
+                    Err(err) => {
+                        warn!("Could not set slot {:?} as free because {}", x, err);
+                    }
+                };
+            },
+            Err(err) => {
+                info!("Could not get key info id for key triple {:?} because {}", key_triple, err);
+            }
+        };
 
         match self.key_info_store.remove_key_info(&key_triple) {
             Ok(_) => Ok(psa_destroy_key::Result {}),
             Err(error) => {
-                error!("Key removal failed. {}", error);
+                warn!("Key {} removal reported an error: - {}", key_triple, error);
                 Err(error)
             }
         }

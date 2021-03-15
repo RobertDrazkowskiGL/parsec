@@ -4,6 +4,7 @@ use parsec_interface::operations::psa_algorithm::{
 };
 use parsec_interface::operations::psa_key_attributes::{Attributes, EccFamily, Type};
 use parsec_interface::requests::ResponseStatus;
+use log::warn;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 /// Software status of a ATECC slot
@@ -58,32 +59,15 @@ impl AteccKeySlot {
         if self.status == KeySlotStatus::Locked {
             return Err(ResponseStatus::PsaErrorNotPermitted);
         }
-        match status {
-            KeySlotStatus::Free => {
-                if self.status == KeySlotStatus::Busy {
-                    self.status = status;
-                    Ok(())
-                } else {
-                    Err(ResponseStatus::PsaErrorStorageFailure)
-                }
+        self.status = match status {
+            KeySlotStatus::Locked => return Err(ResponseStatus::PsaErrorNotPermitted),
+            _ => {
+                warn!("set_slot_status {:?}", status);
+                status
             }
-            KeySlotStatus::Busy => {
-                if self.status == KeySlotStatus::Free {
-                    self.status = status;
-                    Ok(())
-                } else {
-                    Err(ResponseStatus::PsaErrorStorageFailure)
-                }
-            }
-            KeySlotStatus::Locked => {
-                if self.status == KeySlotStatus::Free || self.status == KeySlotStatus::Busy {
-                    self.status = status;
-                    Ok(())
-                } else {
-                    Err(ResponseStatus::PsaErrorStorageFailure)
-                }
-            }
-        }
+        };
+
+        Ok(())
     }
 
     fn is_key_type_ok(&self, key_attr: &Attributes) -> bool {

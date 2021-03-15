@@ -57,7 +57,10 @@ impl Provider {
         // First get the device, initialise it and communication channel with it
         let device = match rust_cryptoauthlib::AteccDevice::new(atca_iface) {
             Ok(x) => x,
-            _ => return None,
+            Err(x) => {
+                error!("ATECC device initialization failed: {}", x);
+                return None;
+            }
         };
         let provider_id = ProviderID::CryptoAuthLib;
         // ATECC is useful for non-trivial usage only when its configuration is locked
@@ -110,10 +113,10 @@ impl Provider {
         match cryptoauthlib_provider.key_info_store.get_all() {
             Ok(key_triples) => {
                 for key_triple in key_triples.iter().cloned() {
-                    let key_info = match cryptoauthlib_provider.get_key_info(&key_triple) {
+                    match cryptoauthlib_provider.key_info_store.does_not_exist(&key_triple) {
                         Ok(x) => x,
                         Err(err) => {
-                            error!("Error getting the Key ID for triple:\n{}\n(error: {}), continuing...",
+                            warn!("Error getting the Key ID for triple:\n{}\n(error: {}), continuing...",
                                 key_triple,
                                 err
                             );
@@ -121,14 +124,30 @@ impl Provider {
                             continue;
                         }
                     };
+                    let key_info_id = match cryptoauthlib_provider.key_info_store.get_key_id::<u8>(&key_triple) {
+                        Ok(x) => x,
+                        Err(err) => {
+                            warn!("Could not get key info id for key triple {:?} because {}", key_triple, err);
+                            to_remove.push(key_triple.clone());
+                            continue;
+                        }
+                    };
+                    let key_info_attributes = match cryptoauthlib_provider.key_info_store.get_key_attributes(&key_triple) {
+                        Ok(x) => x,
+                        Err(err) => {
+                            warn!("Could not get key attributes for key triple {:?} because {}", key_triple, err);
+                            to_remove.push(key_triple.clone());
+                            continue;
+                        }
+                    };
                     match cryptoauthlib_provider
                         .key_slots
-                        .key_validate_and_mark_busy(&key_info)
+                        .key_validate_and_mark_busy(key_info_id, &key_info_attributes)
                     {
                         Ok(None) => (),
                         Ok(Some(warning)) => warn!("{} for key triple {:?}", warning, key_triple),
                         Err(err) => {
-                            error!("{} for key triple {:?}", err, key_triple);
+                            warn!("{} for key triple {:?}", err, key_triple);
                             to_remove.push(key_triple.clone());
                             continue;
                         }
