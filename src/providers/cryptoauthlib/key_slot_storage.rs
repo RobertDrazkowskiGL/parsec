@@ -21,7 +21,11 @@ impl KeySlotStorage {
 
     /// Validate KeyInfo data store entry against hardware
     /// Mark slot busy when all checks pass
-    pub fn key_validate_and_mark_busy(&self, key_info_id: u8, key_info_attributes: &Attributes) -> Result<Option<String>, String> {
+    pub fn key_validate_and_mark_busy(
+        &self,
+        key_info_id: u8,
+        key_info_attributes: &Attributes,
+    ) -> Result<Option<String>, String> {
         let mut key_slots = self.storage.write().unwrap();
 
         // Get CryptoAuthLibProvider mapping of key triple to key info and check
