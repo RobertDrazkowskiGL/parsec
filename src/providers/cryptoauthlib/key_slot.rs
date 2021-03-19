@@ -1,10 +1,10 @@
+use log::warn;
 use parsec_interface::operations::psa_algorithm::{
     Aead, AeadWithDefaultLengthTag, Algorithm, AsymmetricSignature, Cipher, FullLengthMac, Hash,
     KeyAgreement, Mac, RawKeyAgreement, SignHash,
 };
 use parsec_interface::operations::psa_key_attributes::{Attributes, EccFamily, Type};
 use parsec_interface::requests::ResponseStatus;
-use log::warn;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 /// Software status of a ATECC slot

@@ -115,7 +115,10 @@ impl Provider {
         match cryptoauthlib_provider.key_info_store.get_all() {
             Ok(key_triples) => {
                 for key_triple in key_triples.iter().cloned() {
-                    match cryptoauthlib_provider.key_info_store.does_not_exist(&key_triple) {
+                    match cryptoauthlib_provider
+                        .key_info_store
+                        .does_not_exist(&key_triple)
+                    {
                         Ok(x) => x,
                         Err(err) => {
                             warn!("Error getting the Key ID for triple:\n{}\n(error: {}), continuing...",
@@ -126,18 +129,30 @@ impl Provider {
                             continue;
                         }
                     };
-                    let key_info_id = match cryptoauthlib_provider.key_info_store.get_key_id::<u8>(&key_triple) {
+                    let key_info_id = match cryptoauthlib_provider
+                        .key_info_store
+                        .get_key_id::<u8>(&key_triple)
+                    {
                         Ok(x) => x,
                         Err(err) => {
-                            warn!("Could not get key info id for key triple {:?} because {}", key_triple, err);
+                            warn!(
+                                "Could not get key info id for key triple {:?} because {}",
+                                key_triple, err
+                            );
                             to_remove.push(key_triple.clone());
                             continue;
                         }
                     };
-                    let key_info_attributes = match cryptoauthlib_provider.key_info_store.get_key_attributes(&key_triple) {
+                    let key_info_attributes = match cryptoauthlib_provider
+                        .key_info_store
+                        .get_key_attributes(&key_triple)
+                    {
                         Ok(x) => x,
                         Err(err) => {
-                            warn!("Could not get key attributes for key triple {:?} because {}", key_triple, err);
+                            warn!(
+                                "Could not get key attributes for key triple {:?} because {}",
+                                key_triple, err
+                            );
                             to_remove.push(key_triple.clone());
                             continue;
                         }
