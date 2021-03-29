@@ -1,3 +1,5 @@
+// Copyright 2021 Contributors to the Parsec project.
+// SPDX-License-Identifier: Apache-2.0
 use super::key_slot::KeySlotStatus;
 use super::Provider;
 use crate::authenticators::ApplicationName;
@@ -31,6 +33,7 @@ impl Provider {
             }
         };
         // generate key
+
         match self.device.gen_key(key_type, slot_id) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 match self
@@ -47,17 +50,11 @@ impl Provider {
             _ => match self.set_slot_status(slot_id as usize, KeySlotStatus::Free) {
                 Ok(()) => {
                     let error = ResponseStatus::PsaErrorInvalidArgument;
-                    error!(
-                        "Key generation failed. Storage slot status updated. {}",
-                        error
-                    );
+                    error!("Key generation failed. Storage slot status updated.");
                     Err(error)
                 }
                 Err(error) => {
-                    error!(
-                        "Key generation failed. Storage slot status failed to update. {}",
-                        error
-                    );
+                    error!("Key generation failed. Storage slot status failed to update.");
                     Err(error)
                 }
             },

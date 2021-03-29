@@ -37,8 +37,8 @@ user_pin = "123456"
 [[provider]]
 provider_type = "CryptoAuthLib"
 key_info_manager = "on-disk-manager"
-device_type = "atecc508a"
-iface_type = "i2c"
+device_type = "device-success"
+iface_type = "test-interface"
 wake_delay = 1500
 rx_retries = 20
 # i2c parameters for i2c-pseudo proxy

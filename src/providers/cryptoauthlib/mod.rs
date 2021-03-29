@@ -29,14 +29,6 @@ mod key_operations;
 mod key_slot;
 mod key_slot_storage;
 
-// const SUPPORTED_OPCODES: [Opcode; 5] = [
-//     Opcode::PsaGenerateKey,
-//     Opcode::PsaDestroyKey,
-//     Opcode::PsaHashCompute,
-//     Opcode::PsaHashCompare,
-//     Opcode::PsaGenerateRandom,
-// ];
-
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -80,7 +72,7 @@ impl Provider {
                 return None;
             }
         };
-        
+
         cryptoauthlib_provider = Provider {
             device,
             provider_id: ProviderID::CryptoAuthLib,
@@ -195,21 +187,22 @@ impl Provider {
 
     fn set_opcodes(&mut self) -> Option<()> {
         match self.device.get_device_type() {
-            Some(rust_cryptoauthlib::AtcaDeviceType::ATECC508A)
-            | Some(rust_cryptoauthlib::AtcaDeviceType::ATECC608A)
-            | Some(rust_cryptoauthlib::AtcaDeviceType::ATECC108A) => {
+            rust_cryptoauthlib::AtcaDeviceType::ATECC508A
+            | rust_cryptoauthlib::AtcaDeviceType::ATECC608A
+            | rust_cryptoauthlib::AtcaDeviceType::ATECC108A => {
                 self.supported_opcodes.push(Opcode::PsaGenerateKey);
                 self.supported_opcodes.push(Opcode::PsaDestroyKey);
                 self.supported_opcodes.push(Opcode::PsaHashCompute);
                 self.supported_opcodes.push(Opcode::PsaHashCompare);
                 self.supported_opcodes.push(Opcode::PsaGenerateRandom);
                 Some(())
-            },
-            Some(rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevFail)
-            | Some(rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevSuccess) => {
+            }
+            rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevSuccess
+            | rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevFail
+            | rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevFailUnimplemented => {
                 self.supported_opcodes.push(Opcode::PsaGenerateRandom);
                 Some(())
-            },
+            }
             _ => None,
         }
     }
@@ -343,36 +336,36 @@ impl ProviderBuilder {
     }
 
     /// Specify a wake delay
-    pub fn with_wake_delay(mut self, wake_delay: u16) -> ProviderBuilder {
-        self.wake_delay = Some(wake_delay);
+    pub fn with_wake_delay(mut self, wake_delay: Option<u16>) -> ProviderBuilder {
+        self.wake_delay = wake_delay;
 
         self
     }
 
     /// Specify number of rx retries
-    pub fn with_rx_retries(mut self, rx_retries: i32) -> ProviderBuilder {
-        self.rx_retries = Some(rx_retries);
+    pub fn with_rx_retries(mut self, rx_retries: Option<i32>) -> ProviderBuilder {
+        self.rx_retries = rx_retries;
 
         self
     }
 
     /// Specify i2c slave address of ATECC device
-    pub fn with_slave_address(mut self, slave_address: u8) -> ProviderBuilder {
-        self.slave_address = Some(slave_address);
+    pub fn with_slave_address(mut self, slave_address: Option<u8>) -> ProviderBuilder {
+        self.slave_address = slave_address;
 
         self
     }
 
     /// Specify i2c bus for ATECC device
-    pub fn with_bus(mut self, bus: u8) -> ProviderBuilder {
-        self.bus = Some(bus);
+    pub fn with_bus(mut self, bus: Option<u8>) -> ProviderBuilder {
+        self.bus = bus;
 
         self
     }
 
     /// Specify i2c baudrate
-    pub fn with_baud(mut self, baud: u32) -> ProviderBuilder {
-        self.baud = Some(baud);
+    pub fn with_baud(mut self, baud: Option<u32>) -> ProviderBuilder {
+        self.baud = baud;
 
         self
     }
@@ -383,57 +376,44 @@ impl ProviderBuilder {
             Some(x) => match x.as_str() {
                 "i2c" => {
                     let atcai2c_iface_cfg = rust_cryptoauthlib::AtcaIfaceI2c::default()
-                        .set_slave_address(
-                            self.slave_address.ok_or_else(|| {
-                                Error::new(ErrorKind::InvalidData, "missing atecc i2c slave address")
-                            })?
-                        )
-                        .set_bus(
-                            self.bus.ok_or_else(|| {
-                                Error::new(ErrorKind::InvalidData, "missing atecc i2c bus")
-                            })?
-                        )
-                        .set_baud(
-                            self.baud.ok_or_else(|| {
-                                Error::new(ErrorKind::InvalidData, "missing atecc i2c baud rate")
-                            })?
-                        )
-                    ;
+                        .set_slave_address(self.slave_address.ok_or_else(|| {
+                            Error::new(ErrorKind::InvalidData, "missing atecc i2c slave address")
+                        })?)
+                        .set_bus(self.bus.ok_or_else(|| {
+                            Error::new(ErrorKind::InvalidData, "missing atecc i2c bus")
+                        })?)
+                        .set_baud(self.baud.ok_or_else(|| {
+                            Error::new(ErrorKind::InvalidData, "missing atecc i2c baud rate")
+                        })?);
                     rust_cryptoauthlib::AtcaIfaceCfg::default()
                         .set_iface_type("i2c".to_owned())
-                        .set_devtype(
-                            self.device_type.ok_or_else(|| {
-                                Error::new(ErrorKind::InvalidData, "missing atecc device type")
-                            })?
-                        )
-                        .set_wake_delay(
-                            self.wake_delay.ok_or_else(|| {
-                                Error::new(ErrorKind::InvalidData, "missing atecc wake delay")
-                            })?
-                        )
-                        .set_rx_retries(
-                            self.rx_retries.ok_or_else(|| {
-                                Error::new(
-                                    ErrorKind::InvalidData,
-                                    "missing rx retries number for atecc",
-                                )
-                            })?
-                        )
+                        .set_devtype(self.device_type.ok_or_else(|| {
+                            Error::new(ErrorKind::InvalidData, "missing atecc device type")
+                        })?)
+                        .set_wake_delay(self.wake_delay.ok_or_else(|| {
+                            Error::new(ErrorKind::InvalidData, "missing atecc wake delay")
+                        })?)
+                        .set_rx_retries(self.rx_retries.ok_or_else(|| {
+                            Error::new(
+                                ErrorKind::InvalidData,
+                                "missing rx retries number for atecc",
+                            )
+                        })?)
                         .set_iface(
-                            rust_cryptoauthlib::AtcaIface::default()
-                                .set_atcai2c(atcai2c_iface_cfg)
+                            rust_cryptoauthlib::AtcaIface::default().set_atcai2c(atcai2c_iface_cfg),
                         )
-                },
-                "test-interface" => {
-                    rust_cryptoauthlib::AtcaIfaceCfg::default()
-                        .set_iface_type("test-interface".to_owned())
-                        .set_devtype(
-                            self.device_type.ok_or_else(|| {
-                                Error::new(ErrorKind::InvalidData, "missing atecc device type")
-                            })?
-                        )
-                },
-                _ => return Err(Error::new(ErrorKind::InvalidData, "Unsupported inteface type")),
+                }
+                "test-interface" => rust_cryptoauthlib::AtcaIfaceCfg::default()
+                    .set_iface_type("test-interface".to_owned())
+                    .set_devtype(self.device_type.ok_or_else(|| {
+                        Error::new(ErrorKind::InvalidData, "missing atecc device type")
+                    })?),
+                _ => {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "Unsupported inteface type",
+                    ))
+                }
             },
             None => return Err(Error::new(ErrorKind::InvalidData, "Missing inteface type")),
         };
