@@ -30,14 +30,6 @@ mod key_operations;
 mod key_slot;
 mod key_slot_storage;
 
-// const SUPPORTED_OPCODES: [Opcode; 5] = [
-//     Opcode::PsaGenerateKey,
-//     Opcode::PsaDestroyKey,
-//     Opcode::PsaHashCompute,
-//     Opcode::PsaHashCompare,
-//     Opcode::PsaGenerateRandom,
-// ];
-
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -69,22 +61,9 @@ impl Provider {
         };
 
         // ATECC is useful for non-trivial usage only when its configuration is locked
-        match device.configuration_is_locked() {
-            // Ok(is_locked) => {
-            //     if !is_locked {
-            //         error!("Error: configuration is not locked.");
-            //         return None;
-            //     }
-            // }
-            // Err(error) => {
-            //     error!("Configuration error. {}", error);
-            //     return None;
-            // }
-            true => (),
-            false => {
-                error!("Error: configuration is not locked.");
-                return None;
-            }
+        if !device.configuration_is_locked() {
+            error!("Error: configuration is not locked.");
+            return None;
         }
 
         // This will be returned when everything succeedes
