@@ -420,7 +420,6 @@ impl ProviderBuilder {
             },
             None => return Err(Error::new(ErrorKind::InvalidData, "Missing inteface type")),
         };
-
         Provider::new(
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
