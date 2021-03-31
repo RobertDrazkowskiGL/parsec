@@ -82,6 +82,10 @@ fn check_export_public_possible() -> Result<()> {
     if !client.is_operation_supported(Opcode::PsaExportPublicKey) {
         return Ok(());
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
     let key_attributes = Attributes {
         lifetime: Lifetime::Persistent,
         key_type: Type::RsaKeyPair,

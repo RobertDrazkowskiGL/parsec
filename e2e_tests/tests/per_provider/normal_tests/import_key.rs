@@ -88,6 +88,9 @@ fn import_key() -> Result<()> {
 fn create_and_import_key() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("create_and_import_key");
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return Ok(());
+    }
 
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
@@ -105,6 +108,9 @@ fn create_and_import_key() -> Result<()> {
 fn import_key_twice() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("import_key_twice");
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return Ok(());
+    }
 
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
@@ -122,6 +128,9 @@ fn import_key_twice() -> Result<()> {
 fn check_format_import1() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("check_format_import");
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return Ok(());
+    }
 
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
@@ -143,6 +152,9 @@ fn check_format_import2() -> Result<()> {
     // The size of the key is always taken from the data parameter.
     let mut client = TestClient::new();
     let key_name = String::from("check_format_import2");
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return Ok(());
+    }
 
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
@@ -193,6 +205,9 @@ fn check_format_import3() -> Result<()> {
     // from the data parameter, the operation should fail.
     let mut client = TestClient::new();
     let key_name = String::from("check_format_import3");
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return Ok(());
+    }
 
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
@@ -245,6 +260,9 @@ fn check_format_import3() -> Result<()> {
 fn failed_imported_key_should_be_removed() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("failed_imported_key_should_be_removed");
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return Ok(());
+    }
 
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());

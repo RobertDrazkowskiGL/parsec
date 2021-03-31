@@ -23,17 +23,17 @@ impl KeySlotStorage {
     /// Mark slot busy when all checks pass
     pub fn key_validate_and_mark_busy(
         &self,
-        key_info_id: u8,
-        key_info_attributes: &Attributes,
+        key_id: u8,
+        key_attr: &Attributes,
     ) -> Result<Option<String>, String> {
         let mut key_slots = self.storage.write().unwrap();
 
         // Get CryptoAuthLibProvider mapping of key triple to key info and check
-        // (1) if the key info matches ATECC configuration - report key triple to b dropped if not
+        // (1) if the key info matches ATECC configuration - drop key triple if not
         // (2) if there are no two key triples mapping to a single ATECC slot - warning only ATM
 
         // check (1)
-        match key_slots[key_info_id as usize].key_attr_vs_config(&key_info_attributes) {
+        match key_slots[key_id as usize].key_attr_vs_config(&key_attr) {
             Ok(_) => (),
             Err(err) => {
                 let error = std::format!("ATECC slot configuration mismatch: {}", err);
@@ -41,15 +41,14 @@ impl KeySlotStorage {
             }
         };
         // check(2)
-        match key_slots[key_info_id as usize].reference_check_and_set() {
+        match key_slots[key_id as usize].reference_check_and_set() {
             Ok(_) => (),
             Err(slot) => {
                 let warning = std::format!("Superfluous reference(s) to ATECC slot {:?}", slot);
                 return Ok(Some(warning));
             }
         };
-        // when everything succeedes - set slot as busy
-        match key_slots[key_info_id as usize].set_slot_status(KeySlotStatus::Busy) {
+        match key_slots[key_id as usize].set_slot_status(KeySlotStatus::Busy) {
             Ok(()) => Ok(None),
             Err(err) => {
                 let error = std::format!("Unable to set hardware slot status: {}", err);

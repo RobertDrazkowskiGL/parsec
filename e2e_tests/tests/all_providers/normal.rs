@@ -23,7 +23,7 @@ fn list_providers() {
     assert!(uuids.contains(&Uuid::parse_str("30e39502-eba6-4d60-a4af-c518b7f5e38f").unwrap()));
     // TPM provider
     assert!(uuids.contains(&Uuid::parse_str("1e4954a4-ff21-46d3-ab0c-661eeb667e1d").unwrap()));
-    // CryptoAuthLib provider
+    CryptoAuthLib provider
     assert!(uuids.contains(&Uuid::parse_str("b8ba81e2-e9f7-4bdd-b096-a29d0019960c").unwrap()));
 }
 
@@ -72,7 +72,7 @@ fn list_opcodes() {
     let _ = core_provider_opcodes.insert(Opcode::ListOpcodes);
     let _ = core_provider_opcodes.insert(Opcode::ListKeys);
 
-    // Not that much to be tested ATM
+    // Not that much to be tested with test-interface
     let _ = crypto_providers_cal.insert(Opcode::PsaGenerateRandom);
 
     assert_eq!(
@@ -98,7 +98,7 @@ fn list_opcodes() {
             .list_opcodes(ProviderID::MbedCrypto)
             .expect("list providers failed"),
         crypto_providers_mbed_crypto
-    );
+    );  
     assert_eq!(
         client
             .list_opcodes(ProviderID::CryptoAuthLib)

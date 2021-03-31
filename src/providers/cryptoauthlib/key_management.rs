@@ -9,10 +9,7 @@ impl Provider {
     /// Iterate through key_slots and find a free one with configuration matching attributes.
     /// If found, the slot is marked Busy.
     pub fn find_suitable_slot(&self, key_attr: &Attributes) -> Result<u8, ResponseStatus> {
-        match self.key_slots.find_suitable_slot(key_attr) {
-            Ok(slot) => Ok(slot),
-            Err(err) => Err(err),
-        }
+        self.key_slots.find_suitable_slot(key_attr)
     }
 
     /// Set status of AteccKeySlot
@@ -34,8 +31,14 @@ impl Provider {
             }
             | Type::EccPublicKey {
                 curve_family: EccFamily::SecpR1,
-            } => rust_cryptoauthlib::KeyType::P256EccKey,
-            _ => rust_cryptoauthlib::KeyType::Rfu,
+            } => {
+                if attributes.bits == 256 {
+                    Ok(rust_cryptoauthlib::KeyType::P256EccKey)
+                } else {
+                    Err(ResponseStatus::PsaErrorNotSupported)
+                }
+            }
+            _ => Err(ResponseStatus::PsaErrorNotSupported),
         }
     }
 }

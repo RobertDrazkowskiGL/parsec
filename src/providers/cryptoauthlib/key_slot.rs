@@ -1,5 +1,6 @@
 // Copyright 2021 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
+use log::warn;
 use parsec_interface::operations::psa_algorithm::{
     Aead, AeadWithDefaultLengthTag, Algorithm, AsymmetricSignature, Cipher, FullLengthMac, Hash,
     KeyAgreement, Mac, RawKeyAgreement, SignHash,
@@ -12,8 +13,6 @@ use parsec_interface::requests::ResponseStatus;
 pub enum KeySlotStatus {
     /// Slot is free
     Free,
-    // InProgress,
-    #[allow(dead_code)]
     /// Slot is busy but can be released
     Busy,
     /// Slot is busy and cannot be released, because of hardware protection

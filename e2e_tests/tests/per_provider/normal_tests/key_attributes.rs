@@ -15,6 +15,9 @@ use parsec_client::core::interface::requests::{Opcode, ProviderID, ResponseStatu
 fn wrong_type() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_type");
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
 
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return;
@@ -60,6 +63,9 @@ fn wrong_type() {
 fn wrong_usage_flags() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_usage_flags");
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
 
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return;
@@ -105,6 +111,9 @@ fn wrong_usage_flags() {
 fn wrong_permitted_algorithm() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_permitted_algorithm");
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
 
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return;
