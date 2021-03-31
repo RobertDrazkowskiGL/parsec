@@ -125,14 +125,10 @@ impl Provider {
                     }
                 }
             }
-            rust_cryptoauthlib::AtcaStatus::AtcaInvalidSize => {
-                error_status = rust_cryptoauthlib::AtcaStatus::AtcaInvalidSize;
-            }
-            rust_cryptoauthlib::AtcaStatus::AtcaInvalidId => {
-                error_status = rust_cryptoauthlib::AtcaStatus::AtcaInvalidId;
-            }
-            rust_cryptoauthlib::AtcaStatus::AtcaBadParam => {
-                error_status = rust_cryptoauthlib::AtcaStatus::AtcaBadParam;
+            x @ rust_cryptoauthlib::AtcaStatus::AtcaInvalidSize
+            | x @ rust_cryptoauthlib::AtcaStatus::AtcaInvalidId
+            | x @ rust_cryptoauthlib::AtcaStatus::AtcaBadParam => {
+                error_status = x;
             }
             _ => {
                 error_status = rust_cryptoauthlib::AtcaStatus::AtcaUnimplemented;
