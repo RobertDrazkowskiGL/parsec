@@ -205,9 +205,9 @@ dependencies = [
 
 [[package]]
 name = "cryptoki"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ee26477a11a3a0af4c733799495a2399c9fd864f454b4c37f58c7b4d2842d87"
+checksum = "f2b16345ac172d6dae95047057f6d32b25fc35067acf08e084d61c28bcf7a7c4"
 dependencies = [
  "cryptoki-sys",
  "derivative",
@@ -219,9 +219,9 @@ dependencies = [
 
 [[package]]
 name = "cryptoki-sys"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e712c566c87e4c7ef3af69411026dd107f931787c2d3f790b7e6c1f981d6e916"
+checksum = "fae87be656a74c1a5d08edcd6c15c9dd600d612a905a1a24a46717ce4eb5298c"
 dependencies = [
  "libloading",
 ]
@@ -383,9 +383,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.91"
+version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8916b1f6ca17130ec6568feccee27c156ad12037880833a3b842a823236502e7"
+checksum = "56d855069fafbb9b344c0f962150cd2c1187975cb1c22c1522c240d8c4986714"
 
 [[package]]
 name = "libloading"

@@ -3,7 +3,7 @@
 use super::key_slot::KeySlotStatus;
 use super::Provider;
 use crate::authenticators::ApplicationName;
-use log::{error, info, warn};
+use log::{error, warn};
 use parsec_interface::operations::{psa_destroy_key, psa_generate_key};
 use parsec_interface::requests::{ResponseStatus, Result};
 

@@ -120,7 +120,7 @@ while [ "$#" -gt 0 ]; do
         --no-stress-test )
             NO_STRESS_TEST="True"
         ;;
-        mbed-crypto | pkcs11 | tpm | trusted-service | all )
+        mbed-crypto | pkcs11 | tpm | trusted-service | cryptoauthlib | all)
             if [ -n "$PROVIDER_NAME" ]; then
                 error_msg "Only one provider name must be given"
             fi
@@ -175,8 +175,8 @@ if [ "$PROVIDER_NAME" = "trusted-service" ] || [ "$PROVIDER_NAME" = "coverage" ]
 fi
 
 if [ "$PROVIDER_NAME" = "coverage" ]; then
-    PROVIDERS="mbed-crypto tpm cryptoauthlib" # pkcs11 not supported because of a segfault when the service stops; see: https://github.com/parallaxsecond/parsec/issues/349
-    EXCLUDES="fuzz/*,e2e_tests/*,src/providers/pkcs11/*,src/providers/trusted_service/*"
+    PROVIDERS="mbed-crypto tpm" # pkcs11 not supported because of a segfault when the service stops; see: https://github.com/parallaxsecond/parsec/issues/349
+    EXCLUDES="fuzz/*,e2e_tests/*,src/providers/pkcs11/*,src/providers/trusted_service/*,src/providers/cryptoauthlib/*"
     # Install tarpaulin
     cargo install cargo-tarpaulin
 

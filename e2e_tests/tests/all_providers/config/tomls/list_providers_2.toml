@@ -37,7 +37,7 @@ owner_hierarchy_auth = "tpm_pass"
 [[provider]]
 provider_type = "CryptoAuthLib"
 key_info_manager = "on-disk-manager"
-device_type = "device-success"
+device_type = "always-success"
 iface_type = "test-interface"
 wake_delay = 1500
 rx_retries = 20

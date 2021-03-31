@@ -22,10 +22,12 @@ impl Provider {
     }
 
     /// Get CryptoAuthLib's key type based on PARSEC's KeyInfoManager type.
-    pub fn get_calib_key_type(attributes: &Attributes) -> rust_cryptoauthlib::KeyType {
+    pub fn get_calib_key_type(
+        attributes: &Attributes,
+    ) -> Result<rust_cryptoauthlib::KeyType, ResponseStatus> {
         match attributes.key_type {
-            Type::RawData => rust_cryptoauthlib::KeyType::ShaOrText,
-            Type::Aes => rust_cryptoauthlib::KeyType::Aes,
+            Type::RawData => Ok(rust_cryptoauthlib::KeyType::ShaOrText),
+            Type::Aes => Ok(rust_cryptoauthlib::KeyType::Aes),
             Type::EccKeyPair {
                 curve_family: EccFamily::SecpR1,
             }

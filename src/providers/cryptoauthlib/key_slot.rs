@@ -1,6 +1,5 @@
 // Copyright 2021 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
-use log::warn;
 use parsec_interface::operations::psa_algorithm::{
     Aead, AeadWithDefaultLengthTag, Algorithm, AsymmetricSignature, Cipher, FullLengthMac, Hash,
     KeyAgreement, Mac, RawKeyAgreement, SignHash,
