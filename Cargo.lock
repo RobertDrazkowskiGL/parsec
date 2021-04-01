@@ -198,7 +198,7 @@ dependencies = [
 [[package]]
 name = "cryptoauthlib-sys"
 version = "0.2.0"
-source = "git+https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git?branch=devel-0.3.0-take-1#47d0d03efd95ca562d3b13b47652d02ebdaaa7aa"
+source = "git+https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git?branch=devel-0.3.0-take-1#2dcec2e05e7fb3172dc3d30756acafe560139496"
 dependencies = [
  "cmake",
 ]
@@ -912,7 +912,7 @@ dependencies = [
 [[package]]
 name = "rust-cryptoauthlib"
 version = "0.3.0"
-source = "git+https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git?branch=devel-0.3.0-take-1#47d0d03efd95ca562d3b13b47652d02ebdaaa7aa"
+source = "git+https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git?branch=devel-0.3.0-take-1#2dcec2e05e7fb3172dc3d30756acafe560139496"
 dependencies = [
  "cryptoauthlib-sys",
  "lazy_static",

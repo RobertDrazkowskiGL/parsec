@@ -59,19 +59,12 @@ impl Provider {
                 return None;
             }
         };
+
         // ATECC is useful for non-trivial usage only when its configuration is locked
-        match device.configuration_is_locked() {
-            Ok(is_locked) => {
-                if !is_locked {
-                    error!("Error: configuration is not locked.");
-                    return None;
-                }
-            }
-            Err(err) => {
-                error!("Configuration error: {}", err);
-                return None;
-            }
-        };
+        if !device.configuration_is_locked() {
+            error!("Error: configuration is not locked.");
+            return None;
+        }
 
         cryptoauthlib_provider = Provider {
             device,

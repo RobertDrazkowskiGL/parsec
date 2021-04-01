@@ -43,8 +43,6 @@ libc = "0.2.86"
 anyhow = "1.0.38"
 #rust-cryptoauthlib = { git = "ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git", branch = "devel-0.3.0", optional = true }
 rust-cryptoauthlib = { git = "https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git", branch = "devel-0.3.0-take-1", optional = true }
-#rust-cryptoauthlib = { path = "../rust-cryptoauthlib/cryptoauthlib", optional = true }
-#cryptoauthlib-sys = { path = "../rust-cryptoauthlib/cryptoauthlib-sys", optional = true }
 
 prost = { version = "0.7.0", optional = true }
 
@@ -52,8 +50,6 @@ prost = { version = "0.7.0", optional = true }
 rand = { version = "0.8.3", features = ["small_rng"] }
 #rust-cryptoauthlib = { git = "ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoauthlib.git", branch = "devel-0.3.0", features=["software-backend"]}
 rust-cryptoauthlib = { git = "https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git", branch = "devel-0.3.0-take-1", features=["software-backend"]}
-#rust-cryptoauthlib = { path = "../rust-cryptoauthlib/cryptoauthlib", features=["software-backend"]}
-#cryptoauthlib-sys = { path = "../rust-cryptoauthlib/cryptoauthlib-sys"}
 
 [build-dependencies]
 bindgen = { version = "0.57.0", optional = true }
