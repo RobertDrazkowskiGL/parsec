@@ -190,6 +190,8 @@ impl Provider {
                 self.supported_opcodes.push(Opcode::PsaHashCompute);
                 self.supported_opcodes.push(Opcode::PsaHashCompare);
                 self.supported_opcodes.push(Opcode::PsaGenerateRandom);
+                self.supported_opcodes.push(Opcode::PsaImportKey);
+                self.supported_opcodes.push(Opcode::PsaSignHash);
                 Some(())
             }
             rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevSuccess
