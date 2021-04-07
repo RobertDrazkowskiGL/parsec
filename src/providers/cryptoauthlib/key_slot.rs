@@ -1,4 +1,5 @@
-use log::warn;
+// Copyright 2021 Contributors to the Parsec project.
+// SPDX-License-Identifier: Apache-2.0
 use parsec_interface::operations::psa_algorithm::{
     Aead, AeadWithDefaultLengthTag, Algorithm, AsymmetricSignature, Cipher, FullLengthMac, Hash,
     KeyAgreement, Mac, RawKeyAgreement, SignHash,
@@ -29,8 +30,12 @@ pub struct AteccKeySlot {
 }
 
 impl Default for AteccKeySlot {
-    fn default() -> AteccKeySlot {
-        unsafe { std::mem::zeroed() }
+    fn default() -> Self {
+        AteccKeySlot {
+            ref_count: 0u8,
+            status: KeySlotStatus::Free,
+            config: rust_cryptoauthlib::SlotConfig::default(),
+        }
     }
 }
 
@@ -57,20 +62,11 @@ impl AteccKeySlot {
         if self.status == KeySlotStatus::Locked {
             return Err(ResponseStatus::PsaErrorNotPermitted);
         }
-        match status {
-            KeySlotStatus::Free => {
-                if self.status != KeySlotStatus::Busy {
-                    warn!("Setting a non-busy slot status as Free");
-                }
-            }
-            KeySlotStatus::Busy => {
-                if self.status != KeySlotStatus::Free {
-                    warn!("Setting a non-free slot status as Busy");
-                }
-            }
-            KeySlotStatus::Locked => warn!("Setting a slot status as Locked"),
+        self.status = match status {
+            KeySlotStatus::Locked => return Err(ResponseStatus::PsaErrorNotPermitted),
+            _ => status,
         };
-        self.status = status;
+
         Ok(())
     }
 
