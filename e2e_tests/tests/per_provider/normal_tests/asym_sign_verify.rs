@@ -45,6 +45,12 @@ fn asym_verify_no_key() {
 fn asym_sign_and_verify_rsa_pkcs() -> Result<()> {
     let key_name = String::from("asym_sign_and_verify_rsa_pkcs");
     let mut client = TestClient::new();
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return Ok(());
+    }
+    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
+        return Ok(());
+    }
 
     client.generate_rsa_sign_key(key_name.clone())?;
     if !client.is_operation_supported(Opcode::PsaSignHash) {
@@ -95,7 +101,6 @@ fn only_verify_from_internet() -> Result<()> {
     if !client.is_operation_supported(Opcode::PsaVerifyHash) {
         return Ok(());
     }
-
     // "Les carottes sont cuites." hashed with SHA256
     let digest = vec![
         0x02, 0x2b, 0x26, 0xb1, 0xc3, 0x18, 0xdb, 0x73, 0x36, 0xef, 0x6f, 0x50, 0x9c, 0x35, 0xdd,
@@ -144,6 +149,13 @@ fn simple_sign_hash() -> Result<()> {
     let mut hasher = Sha256::new();
     hasher.update(b"Bob wrote this message.");
     let hash = hasher.finalize().to_vec();
+    if !client.is_operation_supported(Opcode::PsaGenerateKey) {
+        return Ok(());
+    }
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return Ok(());
+    }
+
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
@@ -237,6 +249,13 @@ fn sign_hash_bad_format() -> Result<()> {
 fn simple_verify_hash() -> Result<()> {
     let key_name = String::from("simple_verify_hash");
     let mut client = TestClient::new();
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return Ok(());
+    }
+    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
+        return Ok(());
+    }
+
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
@@ -433,6 +452,7 @@ fn asym_verify_with_rsa_crate() {
 fn verify_with_ring() {
     let key_name = String::from("verify_with_ring");
     let mut client = TestClient::new();
+
     let message = b"Bob wrote this message.";
 
     client.generate_long_rsa_sign_key(key_name.clone()).unwrap();
