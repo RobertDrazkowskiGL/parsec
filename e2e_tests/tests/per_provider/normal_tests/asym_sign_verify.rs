@@ -53,12 +53,6 @@ fn asym_sign_and_verify_rsa_pkcs() -> Result<()> {
     }
 
     client.generate_rsa_sign_key(key_name.clone())?;
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return Ok(());
-    }
-    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
-        return Ok(());
-    }
 
     let signature = client.sign_with_rsa_sha256(key_name.clone(), HASH.to_vec())?;
 
@@ -156,16 +150,17 @@ fn simple_sign_hash() -> Result<()> {
         return Ok(());
     }
 
-    if !client.is_operation_supported(Opcode::PsaGenerateKey) {
-        return Ok(());
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
+    {
+        client.generate_rsa_sign_key(key_name.clone())?;
+        let _ = client.sign_with_rsa_sha256(key_name, hash)?;
     }
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return Ok(());
+    #[cfg(feature = "cryptoauthlib-provider")]
+    {
+        client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
+        let _ = client.sign_with_ecdsa_sha256(key_name, hash)?;
     }
-
-    client.generate_rsa_sign_key(key_name.clone())?;
-
-    let _ = client.sign_with_rsa_sha256(key_name, hash)?;
+    
 
     Ok(())
 }
@@ -185,6 +180,7 @@ fn sign_hash_not_permitted() -> Result<()> {
         return Ok(());
     }
 
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
     let attributes = Attributes {
         lifetime: Lifetime::Persistent,
         key_type: Type::RsaKeyPair,
@@ -209,10 +205,40 @@ fn sign_hash_not_permitted() -> Result<()> {
             ),
         },
     };
+    #[cfg(feature = "cryptoauthlib-provider")]
+    let attributes = Attributes {
+        lifetime: Lifetime::Persistent,
+        key_type: Type::EccKeyPair {
+            curve_family: EccFamily::SecpR1,
+        },
+        bits: 256,
+        policy: Policy {
+            usage_flags: UsageFlags {
+                sign_hash: false,
+                verify_hash: true,
+                sign_message: true,
+                verify_message: true,
+                export: false,
+                encrypt: false,
+                decrypt: false,
+                cache: false,
+                copy: false,
+                derive: false,
+            },
+            permitted_algorithms: Algorithm::AsymmetricSignature(
+                AsymmetricSignature::Ecdsa {
+                    hash_alg: Hash::Sha256.into(),
+                },
+            ),
+        },
+    };
 
     client.generate_key(key_name.clone(), attributes)?;
 
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
     let status = client.sign_with_rsa_sha256(key_name, hash).unwrap_err();
+    #[cfg(feature = "cryptoauthlib-provider")]
+    let status = client.sign_with_ecdsa_sha256(key_name, hash).unwrap_err();
 
     assert_eq!(status, ResponseStatus::PsaErrorNotPermitted);
 
@@ -233,12 +259,24 @@ fn sign_hash_bad_format() -> Result<()> {
         return Ok(());
     }
 
-    client.generate_rsa_sign_key(key_name.clone())?;
-
-    let status1 = client
-        .sign_with_rsa_sha256(key_name.clone(), hash1)
-        .unwrap_err();
-    let status2 = client.sign_with_rsa_sha256(key_name, hash2).unwrap_err();
+    let status1;
+    let status2;
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
+    {
+        client.generate_rsa_sign_key(key_name.clone())?;
+        status1 = client
+            .sign_with_rsa_sha256(key_name.clone(), hash1)
+            .unwrap_err();
+        status2 = client.sign_with_rsa_sha256(key_name, hash2).unwrap_err();
+    }
+    #[cfg(feature = "cryptoauthlib-provider")]
+    {
+        client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
+        status1 = client
+            .sign_with_ecdsa_sha256(key_name.clone(), hash1)
+           .unwrap_err();
+        status2 = client.sign_with_ecdsa_sha256(key_name, hash2).unwrap_err();
+    }
 
     assert_eq!(status1, ResponseStatus::PsaErrorInvalidArgument);
     assert_eq!(status2, ResponseStatus::PsaErrorInvalidArgument);
@@ -249,13 +287,6 @@ fn sign_hash_bad_format() -> Result<()> {
 fn simple_verify_hash() -> Result<()> {
     let key_name = String::from("simple_verify_hash");
     let mut client = TestClient::new();
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return Ok(());
-    }
-    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
-        return Ok(());
-    }
-
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
