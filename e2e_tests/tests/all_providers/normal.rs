@@ -98,7 +98,7 @@ fn list_opcodes() {
             .list_opcodes(ProviderID::MbedCrypto)
             .expect("list providers failed"),
         crypto_providers_mbed_crypto
-    );
+    );  
     assert_eq!(
         client
             .list_opcodes(ProviderID::CryptoAuthLib)
