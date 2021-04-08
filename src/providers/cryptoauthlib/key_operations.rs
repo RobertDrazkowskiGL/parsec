@@ -65,15 +65,16 @@ impl Provider {
     ) -> Result<psa_destroy_key::Result> {
         let key_name = op.key_name;
         let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let key_id = self.key_info_store.get_key_id::<u8>(&key_triple)?;
 
         match self.key_info_store.remove_key_info(&key_triple) {
-            Ok(key_info) => {
-                match self.set_slot_status(key_info.id[0] as usize, KeySlotStatus::Free) {
+            Ok(_) => {
+                match self.set_slot_status(key_id as usize, KeySlotStatus::Free) {
                     Ok(()) => (),
                     Err(error) => {
                         warn!(
                             "Could not set slot {:?} as free because {}",
-                            key_info.id[0], error,
+                            key_id, error,
                         );
                     }
                 }
@@ -85,77 +86,6 @@ impl Provider {
             }
         }
     }
-
-    // pub(super) fn psa_import_key_internal(
-    //     &self,
-    //     app_name: ApplicationName,
-    //     op: psa_import_key::Operation,
-    // ) -> Result<psa_import_key::Result> {
-    //     let key_name = op.key_name;
-    //     let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
-    //     match self.key_info_store.does_not_exist(&key_triple) {
-    //         Ok(()) => (),
-    //         Err(error) => {
-    //             error!("Key triple already exists in storage. {}", error);
-    //             return Err(error);
-    //         }
-    //     };
-
-    //     let key_attributes = op.attributes;
-    //     let key_type = Provider::get_calib_key_type(&key_attributes);
-    //     let slot_id = match self.find_suitable_slot(&key_attributes) {
-    //         Ok(slot) => slot,
-    //         Err(error) => {
-    //             error!("Failed to find suitable storage slot for key. {}", error);
-    //             return Err(error);
-    //         }
-    //     };
-    //     let key_data_r = op.data.expose_secret();
-
-    //     let status = self.device.import_key(key_type, key_data_r, slot_id);
-    //     let error_status: rust_cryptoauthlib::AtcaStatus;
-    //     match status {
-    //         rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
-    //             match self
-    //                 .key_info_store
-    //                 .insert_key_info(key_triple, &slot_id, key_attributes)
-    //             {
-    //                 Ok(()) => {
-    //                     return Ok(psa_import_key::Result {});
-    //                 }
-    //                 Err(error) => {
-    //                     error!("Insert key triple to KeyInfoManager failed. {}", error);
-    //                     return Err(error);
-    //                 }
-    //             }
-    //         }
-    //         x @ rust_cryptoauthlib::AtcaStatus::AtcaInvalidSize
-    //         | x @ rust_cryptoauthlib::AtcaStatus::AtcaInvalidId
-    //         | x @ rust_cryptoauthlib::AtcaStatus::AtcaBadParam => {
-    //             error_status = x;
-    //         }
-    //         _ => {
-    //             error_status = rust_cryptoauthlib::AtcaStatus::AtcaUnimplemented;
-    //         }
-    //     }
-    //     match self.set_slot_status(slot_id as usize, KeySlotStatus::Free) {
-    //         Ok(()) => {
-    //             let error = ResponseStatus::PsaErrorInvalidArgument;
-    //             error!(
-    //                 "Key import failed. {}. Storage slot status updated.",
-    //                 error_status
-    //             );
-    //             Err(error)
-    //         }
-    //         Err(error) => {
-    //             error!(
-    //                 "Key import failed. {}. Storage slot status failed to update.",
-    //                 error_status
-    //             );
-    //             Err(error)
-    //         }
-    //     }
-    // }
 
     pub(super) fn psa_import_key_internal(
         &self,
