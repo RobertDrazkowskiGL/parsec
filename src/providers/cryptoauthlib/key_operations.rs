@@ -72,10 +72,7 @@ impl Provider {
                 match self.set_slot_status(key_id as usize, KeySlotStatus::Free) {
                     Ok(()) => (),
                     Err(error) => {
-                        warn!(
-                            "Could not set slot {:?} as free because {}",
-                            key_id, error,
-                        );
+                        warn!("Could not set slot {:?} as free because {}", key_id, error,);
                     }
                 }
                 Ok(psa_destroy_key::Result {})

@@ -598,13 +598,17 @@ impl TestClient {
 
     /// Import a 256 bit ECC public key.
     /// The key can only be used for verifying with the Ecdsa signing algorithm with SHA-256.
-    pub fn import_ecc_public_secp_r1_ecdsa_sha256_key(&mut self, key_name: String, data: Vec<u8>) -> Result<()> {
+    pub fn import_ecc_public_secp_r1_ecdsa_sha256_key(
+        &mut self,
+        key_name: String,
+        data: Vec<u8>,
+    ) -> Result<()> {
         self.import_key(
             key_name,
             Attributes {
                 lifetime: Lifetime::Persistent,
                 key_type: Type::EccPublicKey {
-                    curve_family: EccFamily::SecpR1
+                    curve_family: EccFamily::SecpR1,
                 },
                 bits: 256,
                 policy: Policy {
