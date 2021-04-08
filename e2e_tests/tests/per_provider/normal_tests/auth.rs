@@ -3,6 +3,7 @@
 use e2e_tests::TestClient;
 use parsec_client::core::interface::requests::{Opcode, ResponseStatus};
 use parsec_client::core::interface::requests::Result;
+use parsec_client::core::interface::requests::{Opcode, ResponseStatus};
 
 #[test]
 fn two_auths_same_key_name() -> Result<()> {

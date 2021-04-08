@@ -3,7 +3,7 @@
 use e2e_tests::TestClient;
 use parsec_client::core::interface::operations::psa_algorithm::*;
 use parsec_client::core::interface::operations::psa_key_attributes::*;
-use parsec_client::core::interface::requests::{ Opcode, ResponseStatus, Result};
+use parsec_client::core::interface::requests::{Opcode, ResponseStatus, Result};
 #[cfg(any(feature = "mbed-crypto-provider", feature = "tpm-provider"))]
 use ring::signature::{self, UnparsedPublicKey};
 use rsa::{PaddingScheme, PublicKey, RSAPublicKey};

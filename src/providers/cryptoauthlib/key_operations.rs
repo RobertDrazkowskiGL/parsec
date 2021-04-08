@@ -65,16 +65,14 @@ impl Provider {
     ) -> Result<psa_destroy_key::Result> {
         let key_name = op.key_name;
         let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let key_id = self.key_info_store.get_key_id::<u8>(&key_triple)?;
 
         match self.key_info_store.remove_key_info(&key_triple) {
-            Ok(key_info) => {
-                match self.set_slot_status(key_info.id[0] as usize, KeySlotStatus::Free) {
+            Ok(_) => {
+                match self.set_slot_status(key_id as usize, KeySlotStatus::Free) {
                     Ok(()) => (),
                     Err(error) => {
-                        warn!(
-                            "Could not set slot {:?} as free because {}",
-                            key_info.id[0], error,
-                        );
+                        warn!("Could not set slot {:?} as free because {}", key_id, error,);
                     }
                 }
                 Ok(psa_destroy_key::Result {})
