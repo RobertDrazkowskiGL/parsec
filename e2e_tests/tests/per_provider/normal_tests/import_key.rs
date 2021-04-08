@@ -92,9 +92,6 @@ fn create_and_import_key() -> Result<()> {
         return Ok(());
     }
 
-    if !client.is_operation_supported(Opcode::PsaImportKey) {
-        return Ok(());
-    }
     client.generate_rsa_sign_key(key_name.clone())?;
     let status = client
         .import_rsa_public_key(key_name, KEY_DATA.to_vec())
@@ -112,9 +109,6 @@ fn import_key_twice() -> Result<()> {
         return Ok(());
     }
 
-    if !client.is_operation_supported(Opcode::PsaImportKey) {
-        return Ok(());
-    }
     client.import_rsa_public_key(key_name.clone(), KEY_DATA.to_vec())?;
     let status = client
         .import_rsa_public_key(key_name, KEY_DATA.to_vec())
@@ -128,10 +122,6 @@ fn import_key_twice() -> Result<()> {
 fn check_format_import1() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("check_format_import");
-    if !client.is_operation_supported(Opcode::PsaImportKey) {
-        return Ok(());
-    }
-
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
     }
@@ -152,10 +142,6 @@ fn check_format_import2() -> Result<()> {
     // The size of the key is always taken from the data parameter.
     let mut client = TestClient::new();
     let key_name = String::from("check_format_import2");
-    if !client.is_operation_supported(Opcode::PsaImportKey) {
-        return Ok(());
-    }
-
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
     }
@@ -209,10 +195,6 @@ fn check_format_import3() -> Result<()> {
         return Ok(());
     }
 
-    if !client.is_operation_supported(Opcode::PsaImportKey) {
-        return Ok(());
-    }
-
     let public_key = RSAPublicKey {
         modulus: IntegerAsn1::from_bytes_be_unsigned(vec![0xDE; 1024]),
         public_exponent: IntegerAsn1::from_bytes_be_unsigned(vec![0x01, 0x00, 0x01]),
@@ -260,10 +242,6 @@ fn check_format_import3() -> Result<()> {
 fn failed_imported_key_should_be_removed() -> Result<()> {
     let mut client = TestClient::new();
     let key_name = String::from("failed_imported_key_should_be_removed");
-    if !client.is_operation_supported(Opcode::PsaImportKey) {
-        return Ok(());
-    }
-
     if !client.is_operation_supported(Opcode::PsaImportKey) {
         return Ok(());
     }
