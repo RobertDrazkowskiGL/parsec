@@ -198,7 +198,8 @@ dependencies = [
 [[package]]
 name = "cryptoauthlib-sys"
 version = "0.2.0"
-source = "git+https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git?branch=devel-0.3.0-take-1#2dcec2e05e7fb3172dc3d30756acafe560139496"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20f1e249d01912ba1b73a06a0b8c68986dd6cbbd08fd730cffea412583db207b"
 dependencies = [
  "cmake",
 ]
@@ -912,7 +913,8 @@ dependencies = [
 [[package]]
 name = "rust-cryptoauthlib"
 version = "0.3.0"
-source = "git+https://github.com/RobertDrazkowskiGL/rust-cryptoauthlib.git?branch=devel-0.3.0-take-1#2dcec2e05e7fb3172dc3d30756acafe560139496"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40d1874177f968f181a00a8950eecb5b2ddbd8f33f6db175db78dc81ca4aa072"
 dependencies = [
  "cryptoauthlib-sys",
  "lazy_static",
