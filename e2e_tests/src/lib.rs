@@ -487,7 +487,7 @@ impl TestClient {
         )
     }
 
-    /// Import a 1024 bit ECC public key.
+    /// Import a 1024 bit RSA public key.
     /// The key can only be used for verifying with the RSA PKCS 1v15 signing algorithm with SHA-256.
     pub fn import_rsa_public_key(&mut self, key_name: String, data: Vec<u8>) -> Result<()> {
         self.import_key(
