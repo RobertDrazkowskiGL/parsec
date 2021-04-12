@@ -19,9 +19,6 @@ fn wrong_type() {
         return;
     }
 
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return;
-    }
     // Wrong key type
     let key_type = Type::Derive;
     let permitted_algorithm =
@@ -67,9 +64,6 @@ fn wrong_usage_flags() {
         return;
     }
 
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return;
-    }
     let key_type = Type::RsaKeyPair;
     let permitted_algorithm =
         Algorithm::AsymmetricSignature(AsymmetricSignature::RsaPkcs1v15Sign {
@@ -115,9 +109,6 @@ fn wrong_permitted_algorithm() {
         return;
     }
 
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return;
-    }
     let key_type = Type::RsaKeyPair;
     // Do not permit RSA PKCS 1v15 signing algorithm with SHA-256.
     let permitted_algorithm =

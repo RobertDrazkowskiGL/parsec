@@ -175,8 +175,8 @@ if [ "$PROVIDER_NAME" = "trusted-service" ] || [ "$PROVIDER_NAME" = "coverage" ]
 fi
 
 if [ "$PROVIDER_NAME" = "coverage" ]; then
-    PROVIDERS="mbed-crypto tpm" # pkcs11 not supported because of a segfault when the service stops; see: https://github.com/parallaxsecond/parsec/issues/349
-    EXCLUDES="fuzz/*,e2e_tests/*,src/providers/pkcs11/*,src/providers/trusted_service/*,src/providers/cryptoauthlib/*"
+    PROVIDERS="mbed-crypto tpm pkcs11" # trusted-service not supported because of a segfault when the service stops; see: https://github.com/parallaxsecond/parsec/issues/349
+    EXCLUDES="fuzz/*,e2e_tests/*,src/providers/cryptoauthlib/*,src/providers/trusted_service/*"
     # Install tarpaulin
     cargo install cargo-tarpaulin
 
@@ -218,13 +218,6 @@ fi
 
 echo "Build test"
 RUST_BACKTRACE=1 cargo build $FEATURES
-
-echo "Cross-compilation test"
-# Make sure the the provider install the correct targets via rustup in its Dockerfile.
-if [ "$PROVIDER_NAME" = "pkcs11" ] || [ "$PROVIDER_NAME" = "mbed-crypto" ]; then
-	RUST_BACKTRACE=1 cargo build $FEATURES --target armv7-unknown-linux-gnueabihf
-	RUST_BACKTRACE=1 cargo build $FEATURES --target aarch64-unknown-linux-gnu
-fi
 
 echo "Static checks"
 # On native target clippy or fmt might not be available.

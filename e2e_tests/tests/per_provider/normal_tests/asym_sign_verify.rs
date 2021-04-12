@@ -53,12 +53,6 @@ fn asym_sign_and_verify_rsa_pkcs() -> Result<()> {
     }
 
     client.generate_rsa_sign_key(key_name.clone())?;
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return Ok(());
-    }
-    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
-        return Ok(());
-    }
 
     let signature = client.sign_with_rsa_sha256(key_name.clone(), HASH.to_vec())?;
 
@@ -146,9 +140,6 @@ fn only_verify_from_internet() -> Result<()> {
 fn simple_sign_hash() -> Result<()> {
     let key_name = String::from("simple_sign_hash");
     let mut client = TestClient::new();
-    let mut hasher = Sha256::new();
-    hasher.update(b"Bob wrote this message.");
-    let hash = hasher.finalize().to_vec();
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
@@ -156,12 +147,9 @@ fn simple_sign_hash() -> Result<()> {
         return Ok(());
     }
 
-    if !client.is_operation_supported(Opcode::PsaGenerateKey) {
-        return Ok(());
-    }
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return Ok(());
-    }
+    let mut hasher = Sha256::new();
+    hasher.update(b"Bob wrote this message.");
+    let hash = hasher.finalize().to_vec();
 
     client.generate_rsa_sign_key(key_name.clone())?;
 
@@ -174,16 +162,16 @@ fn simple_sign_hash() -> Result<()> {
 fn sign_hash_not_permitted() -> Result<()> {
     let key_name = String::from("sign_hash_not_permitted");
     let mut client = TestClient::new();
-    let mut hasher = Sha256::new();
-    hasher.update(b"Bob wrote this message.");
-    let hash = hasher.finalize().to_vec();
-
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
+
+    let mut hasher = Sha256::new();
+    hasher.update(b"Bob wrote this message.");
+    let hash = hasher.finalize().to_vec();
 
     let attributes = Attributes {
         lifetime: Lifetime::Persistent,
@@ -223,15 +211,15 @@ fn sign_hash_not_permitted() -> Result<()> {
 fn sign_hash_bad_format() -> Result<()> {
     let key_name = String::from("sign_hash_bad_format");
     let mut client = TestClient::new();
-    let hash1 = vec![0xEE; 31];
-    let hash2 = vec![0xBB; 33];
-
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
+
+    let hash1 = vec![0xEE; 31];
+    let hash2 = vec![0xBB; 33];
 
     client.generate_rsa_sign_key(key_name.clone())?;
 
@@ -249,13 +237,6 @@ fn sign_hash_bad_format() -> Result<()> {
 fn simple_verify_hash() -> Result<()> {
     let key_name = String::from("simple_verify_hash");
     let mut client = TestClient::new();
-    if !client.is_operation_supported(Opcode::PsaSignHash) {
-        return Ok(());
-    }
-    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
-        return Ok(());
-    }
-
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
