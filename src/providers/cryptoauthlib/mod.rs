@@ -20,7 +20,7 @@ use uuid::Uuid;
 
 use parsec_interface::operations::{
     psa_destroy_key, psa_generate_key, psa_generate_random, psa_hash_compare, psa_hash_compute,
-    psa_sign_hash,
+    psa_sign_hash, psa_verify_hash,
 };
 
 mod generate_random;
@@ -29,6 +29,14 @@ mod key_management;
 mod key_operations;
 mod key_slot;
 mod key_slot_storage;
+
+const SUPPORTED_OPCODES: [Opcode; 5] = [
+    Opcode::PsaGenerateKey,
+    Opcode::PsaDestroyKey,
+    Opcode::PsaHashCompute,
+    Opcode::PsaHashCompare,
+    Opcode::PsaGenerateRandom,
+];
 
 /// CryptoAuthLib provider structure
 #[derive(Derivative)]
@@ -304,6 +312,15 @@ impl Provide for Provider {
     ) -> Result<psa_sign_hash::Result> {
         trace!("psa_sign_hash ingress");
         self.psa_sign_hash_internal(app_name, op)
+    }
+
+    fn psa_verify_hash(
+        &self,
+        app_name: ApplicationName,
+        op: psa_verify_hash::Operation,
+    ) -> Result<psa_verify_hash::Result> {
+        trace!("psa_verify_hash ingress");
+        self.psa_verify_hash_internal(app_name, op)
     }
 }
 
