@@ -100,10 +100,7 @@ impl Provider {
             }
             _ => {
                 let error = ResponseStatus::PsaErrorInvalidArgument;
-                error!(
-                    "Export public key failed. {}",
-                    error
-                );
+                error!("Export public key failed. {}", error);
                 Err(error)
             }
         }
