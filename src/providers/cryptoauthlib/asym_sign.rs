@@ -45,18 +45,15 @@ impl Provider {
         let hash = op.hash.clone();
         let signature = op.signature.clone();
         let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
-        let key_info = match self.get_key_info(&key_triple) {
-            Ok(key_info) => key_info,
-            Err(error) => return Err(error),
-        };
-        match op.validate(key_info.attributes) {
+        let key_id = self.key_info_store.get_key_id(&key_triple)?;
+        let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
+        match op.validate(key_attributes) {
             Ok(()) => (),
             Err(error) => return Err(error),
         }
 
-        // pub fn verify_hash(&self, mode: VerifyMode, hash: &[u8], signature: &[u8]) -> Result<bool, AtcaStatus>
         match self.device.verify_hash(
-            rust_cryptoauthlib::VerifyMode::Internal(key_info.id[0]),
+            rust_cryptoauthlib::VerifyMode::Internal(key_id),
             &hash,
             &signature,
         ) {
