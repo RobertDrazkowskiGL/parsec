@@ -457,18 +457,6 @@ impl ProviderBuilder {
                     .set_iface_type("test-interface".to_owned())
                     .set_devtype(self.device_type.ok_or_else(|| {
                         Error::new(ErrorKind::InvalidData, "missing atecc device type")
-                    })?,
-                    self.wake_delay.ok_or_else(|| {
-                        Error::new(ErrorKind::InvalidData, "missing atecc wake delay")
-                    })?,
-                    self.rx_retries.ok_or_else(|| {
-                        Error::new(
-                            ErrorKind::InvalidData,
-                            "missing rx retries number for atecc",
-                        )
-                    })?,
-                    Some(self.slave_address.ok_or_else(|| {
-                        Error::new(ErrorKind::InvalidData, "missing atecc i2c slave address")
                     })?),
                 _ => {
                     return Err(Error::new(
