@@ -23,6 +23,7 @@ use parsec_interface::operations::{
     psa_sign_hash, psa_verify_hash,
 };
 
+mod asym_sign;
 mod generate_random;
 mod hash;
 mod key_management;
