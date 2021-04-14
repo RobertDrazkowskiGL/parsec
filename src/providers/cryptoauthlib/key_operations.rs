@@ -5,7 +5,7 @@ use super::Provider;
 use crate::authenticators::ApplicationName;
 use log::{error, warn};
 use parsec_interface::operations::psa_key_attributes::{EccFamily, Type};
-use parsec_interface::operations::{psa_destroy_key, psa_generate_key, psa_import_key};
+use parsec_interface::operations::{psa_destroy_key, psa_generate_key, psa_import_key, psa_export_public_key};
 use parsec_interface::requests::{Opcode, ResponseStatus, Result};
 use parsec_interface::secrecy::{ExposeSecret, Secret};
 
@@ -156,6 +156,34 @@ impl Provider {
             }
         };
         Err(psa_error_status)
+    }
+
+    pub(super) fn psa_export_public_key_internal(
+        &self,
+        app_name: ApplicationName,
+        op: psa_export_public_key::Operation,
+    ) -> Result<psa_export_public_key::Result> {
+        let key_triple = self.key_info_store.get_key_triple(app_name, op.key_name.clone());
+        let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
+
+        op.validate(key_attributes)?;
+
+        let slot_number = self.key_info_store.get_key_id(&key_triple)?;
+        let mut public_key = Vec::new();
+
+        match self.device.get_public_key(slot_number, &mut public_key) {
+            rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
+                Ok(psa_export_public_key::Result {data: public_key.into()})
+            }
+            _ => {
+                let error = ResponseStatus::PsaErrorInvalidArgument;
+                error!(
+                    "Export public key failed. {}",
+                    error
+                );
+                Err(error)
+            }
+        }
     }
 }
 
