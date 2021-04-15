@@ -190,6 +190,10 @@ impl Provider {
                 self.supported_opcodes.push(Opcode::PsaHashCompute);
                 self.supported_opcodes.push(Opcode::PsaHashCompare);
                 self.supported_opcodes.push(Opcode::PsaGenerateRandom);
+                self.supported_opcodes.push(Opcode::PsaImportKey);
+                self.supported_opcodes.push(Opcode::PsaSignHash);
+                self.supported_opcodes.push(Opcode::PsaVerifyHash);
+                self.supported_opcodes.push(Opcode::PsaExportPublicKey);
                 Some(())
             }
             rust_cryptoauthlib::AtcaDeviceType::AtcaTestDevSuccess
@@ -304,7 +308,11 @@ impl Provide for Provider {
         op: psa_import_key::Operation,
     ) -> Result<psa_import_key::Result> {
         trace!("psa_import_key ingress");
-        self.psa_import_key_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaImportKey) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_import_key_internal(app_name, op)
+        }
     }
 
     fn psa_sign_hash(
@@ -313,7 +321,11 @@ impl Provide for Provider {
         op: psa_sign_hash::Operation,
     ) -> Result<psa_sign_hash::Result> {
         trace!("psa_sign_hash ingress");
-        self.psa_sign_hash_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaSignHash) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_sign_hash_internal(app_name, op)
+        }
     }
 
     fn psa_verify_hash(
@@ -322,7 +334,11 @@ impl Provide for Provider {
         op: psa_verify_hash::Operation,
     ) -> Result<psa_verify_hash::Result> {
         trace!("psa_verify_hash ingress");
-        self.psa_verify_hash_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaVerifyHash) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_verify_hash_internal(app_name, op)
+        }
     }
 
     fn psa_export_public_key(
@@ -331,7 +347,11 @@ impl Provide for Provider {
         op: psa_export_public_key::Operation,
     ) -> Result<psa_export_public_key::Result> {
         trace!("psa_export_public_key ingress");
-        self.psa_export_public_key_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaExportPublicKey) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_export_public_key_internal(app_name, op)
+        }
     }
 }
 
