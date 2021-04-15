@@ -240,7 +240,11 @@ impl Provide for Provider {
         op: psa_hash_compute::Operation,
     ) -> Result<psa_hash_compute::Result> {
         trace!("psa_hash_compute ingress");
-        self.psa_hash_compute_internal(op)
+        if !self.supported_opcodes.contains(&Opcode::PsaHashCompute) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_hash_compute_internal(op)
+        }
     }
 
     fn psa_hash_compare(
@@ -248,7 +252,11 @@ impl Provide for Provider {
         op: psa_hash_compare::Operation,
     ) -> Result<psa_hash_compare::Result> {
         trace!("psa_hash_compare ingress");
-        self.psa_hash_compare_internal(op)
+        if !self.supported_opcodes.contains(&Opcode::PsaHashCompare) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_hash_compare_internal(op)
+        }
     }
 
     fn psa_generate_random(
@@ -256,7 +264,11 @@ impl Provide for Provider {
         op: psa_generate_random::Operation,
     ) -> Result<psa_generate_random::Result> {
         trace!("psa_generate_random ingress");
-        self.psa_generate_random_internal(op)
+        if !self.supported_opcodes.contains(&Opcode::PsaGenerateRandom) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_generate_random_internal(op)
+        }
     }
 
     fn psa_generate_key(
@@ -265,7 +277,11 @@ impl Provide for Provider {
         op: psa_generate_key::Operation,
     ) -> Result<psa_generate_key::Result> {
         trace!("psa_generate_key ingress");
-        self.psa_generate_key_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaGenerateKey) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_generate_key_internal(app_name, op)
+        }
     }
 
     fn psa_destroy_key(
@@ -274,7 +290,11 @@ impl Provide for Provider {
         op: psa_destroy_key::Operation,
     ) -> Result<psa_destroy_key::Result> {
         trace!("psa_destroy_key ingress");
-        self.psa_destroy_key_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaDestroyKey) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_destroy_key_internal(app_name, op)
+        }
     }
 
     fn psa_import_key(
@@ -283,7 +303,11 @@ impl Provide for Provider {
         op: psa_import_key::Operation,
     ) -> Result<psa_import_key::Result> {
         trace!("psa_import_key ingress");
-        self.psa_import_key_internal(app_name, op)
+        if !self.supported_opcodes.contains(&Opcode::PsaImportKey) {
+            Err(ResponseStatus::PsaErrorNotSupported)
+        } else {
+            self.psa_import_key_internal(app_name, op)
+        }
     }
 }
 
