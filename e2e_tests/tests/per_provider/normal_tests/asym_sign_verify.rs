@@ -147,6 +147,10 @@ fn simple_sign_hash() -> Result<()> {
         return Ok(());
     }
 
+    let mut hasher = Sha256::new();
+    hasher.update(b"Bob wrote this message.");
+    let hash = hasher.finalize().to_vec();
+
     #[cfg(not(feature = "cryptoauthlib-provider"))]
     {
         client.generate_rsa_sign_key(key_name.clone())?;
@@ -273,8 +277,6 @@ fn sign_hash_bad_format() -> Result<()> {
             .unwrap_err();
         status2 = client.sign_with_ecdsa_sha256(key_name, hash2).unwrap_err();
     }
-
-    client.generate_rsa_sign_key(key_name.clone())?;
 
     assert_eq!(status1, ResponseStatus::PsaErrorInvalidArgument);
     assert_eq!(status2, ResponseStatus::PsaErrorInvalidArgument);
