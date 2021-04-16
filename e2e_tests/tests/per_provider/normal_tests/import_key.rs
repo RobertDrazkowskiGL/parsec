@@ -68,12 +68,12 @@ const KEY_PAIR_DATA: [u8; 609] = [
 ];
 
 #[cfg(feature = "cryptoauthlib-provider")]
+#[allow(dead_code)]
 const PRIV_KEY_ECC: [u8; 32] = [
     0xF5, 0xDB, 0x6B, 0xA1, 0x82, 0x22, 0xCE, 0xC1, 0x54, 0x53, 0xE5, 0x63, 0xDE, 0xC5, 0xC7, 0x94,
     0xCD, 0x48, 0x95, 0xF2, 0x8C, 0xC2, 0x7F, 0x50, 0xC2, 0x7E, 0xC3, 0x1B, 0xAF, 0x44, 0xEA, 0x54,
 ];
 #[cfg(feature = "cryptoauthlib-provider")]
-#[allow(dead_code)]
 const PUB_KEY_ECC: [u8; 64] = [
     0xBA, 0x6A, 0xB5, 0xF1, 0x19, 0xAF, 0x21, 0x73, 0x03, 0x75, 0xD1, 0x8D, 0x6B, 0x5F, 0xF1, 0x94,
     0x33, 0xE5, 0x3A, 0xEE, 0x5F, 0x6F, 0xBA, 0x22, 0x97, 0x77, 0x13, 0xEA, 0x82, 0xD3, 0x74, 0x84,
@@ -105,7 +105,7 @@ fn import_key() -> Result<()> {
     #[cfg(not(feature = "cryptoauthlib-provider"))]
     let result = client.import_rsa_public_key(key_name, KEY_DATA.to_vec());
     #[cfg(feature = "cryptoauthlib-provider")]
-    let result = client.import_ecc_public_secp_r1_ecdsa_sha256_key(key_name, PRIV_KEY_ECC.to_vec());
+    let result = client.import_ecc_public_secp_r1_ecdsa_sha256_key(key_name, PUB_KEY_ECC.to_vec());
 
     result
 }
@@ -130,7 +130,7 @@ fn create_and_import_key() -> Result<()> {
     {
         client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
         status = client
-            .import_ecc_pair_secp_r1_key(key_name, PRIV_KEY_ECC.to_vec())
+            .import_ecc_public_secp_r1_ecdsa_sha256_key(key_name, PUB_KEY_ECC.to_vec())
             .expect_err("Key should have already existed");
     }
     assert_eq!(status, ResponseStatus::PsaErrorAlreadyExists);
@@ -156,9 +156,9 @@ fn import_key_twice() -> Result<()> {
     }
     #[cfg(feature = "cryptoauthlib-provider")]
     {
-        client.import_ecc_pair_secp_r1_key(key_name.clone(), PRIV_KEY_ECC.to_vec())?;
+        client.import_ecc_public_secp_r1_ecdsa_sha256_key(key_name.clone(), PUB_KEY_ECC.to_vec())?;
         status = client
-            .import_ecc_pair_secp_r1_key(key_name, PRIV_KEY_ECC.to_vec())
+            .import_ecc_public_secp_r1_ecdsa_sha256_key(key_name, PUB_KEY_ECC.to_vec())
             .expect_err("The key with the same name has already been created.");
     }
     assert_eq!(status, ResponseStatus::PsaErrorAlreadyExists);
