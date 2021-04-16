@@ -140,9 +140,6 @@ fn only_verify_from_internet() -> Result<()> {
 fn simple_sign_hash() -> Result<()> {
     let key_name = String::from("simple_sign_hash");
     let mut client = TestClient::new();
-    let mut hasher = Sha256::new();
-    hasher.update(b"Bob wrote this message.");
-    let hash = hasher.finalize().to_vec();
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
@@ -160,7 +157,6 @@ fn simple_sign_hash() -> Result<()> {
         client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
         let _ = client.sign_with_ecdsa_sha256(key_name, hash)?;
     }
-    
 
     Ok(())
 }
@@ -169,16 +165,16 @@ fn simple_sign_hash() -> Result<()> {
 fn sign_hash_not_permitted() -> Result<()> {
     let key_name = String::from("sign_hash_not_permitted");
     let mut client = TestClient::new();
-    let mut hasher = Sha256::new();
-    hasher.update(b"Bob wrote this message.");
-    let hash = hasher.finalize().to_vec();
-
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
+
+    let mut hasher = Sha256::new();
+    hasher.update(b"Bob wrote this message.");
+    let hash = hasher.finalize().to_vec();
 
     #[cfg(not(feature = "cryptoauthlib-provider"))]
     let attributes = Attributes {
@@ -249,15 +245,15 @@ fn sign_hash_not_permitted() -> Result<()> {
 fn sign_hash_bad_format() -> Result<()> {
     let key_name = String::from("sign_hash_bad_format");
     let mut client = TestClient::new();
-    let hash1 = vec![0xEE; 31];
-    let hash2 = vec![0xBB; 33];
-
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
     }
     if !client.is_operation_supported(Opcode::PsaSignHash) {
         return Ok(());
     }
+
+    let hash1 = vec![0xEE; 31];
+    let hash2 = vec![0xBB; 33];
 
     let status1;
     let status2;
@@ -274,9 +270,11 @@ fn sign_hash_bad_format() -> Result<()> {
         client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
         status1 = client
             .sign_with_ecdsa_sha256(key_name.clone(), hash1)
-           .unwrap_err();
+            .unwrap_err();
         status2 = client.sign_with_ecdsa_sha256(key_name, hash2).unwrap_err();
     }
+
+    client.generate_rsa_sign_key(key_name.clone())?;
 
     assert_eq!(status1, ResponseStatus::PsaErrorInvalidArgument);
     assert_eq!(status2, ResponseStatus::PsaErrorInvalidArgument);

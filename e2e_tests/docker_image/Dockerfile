@@ -6,9 +6,6 @@ RUN apt update
 RUN apt install -y autoconf-archive libcmocka0 libcmocka-dev procps
 RUN apt install -y iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev doxygen libjson-c-dev
 RUN apt install -y --fix-missing wget python3 cmake clang
-RUN apt install -y gcc-multilib
-RUN apt install -y gcc-arm-linux-gnueabihf
-RUN apt install -y gcc-aarch64-linux-gnu
 RUN apt install -y libini-config-dev libcurl4-openssl-dev tpm2-tools curl libgcc1
 RUN apt install -y python3-distutils libclang-dev protobuf-compiler python3-pip
 
@@ -22,23 +19,21 @@ RUN cd tpm2-tss \
 	&& make -j$(nproc) \
 	&& make install \
 	&& ldconfig
-
 RUN rm -rf tpm2-tss
 
-ARG ibmtpm_name=ibmtpm1637
-
 # Download and install software TPM
+ARG ibmtpm_name=ibmtpm1637
 RUN wget -L "https://downloads.sourceforge.net/project/ibmswtpm2/$ibmtpm_name.tar.gz"
 RUN sha256sum $ibmtpm_name.tar.gz | grep ^dd3a4c3f7724243bc9ebcd5c39bbf87b82c696d1c1241cb8e5883534f6e2e327
 RUN mkdir -p $ibmtpm_name \
-	&& tar xvf $ibmtpm_name.tar.gz -C $ibmtpm_name \
+	&& tar -xvf $ibmtpm_name.tar.gz -C $ibmtpm_name \
+	&& chown -R root:root $ibmtpm_name \
 	&& rm $ibmtpm_name.tar.gz
 WORKDIR $ibmtpm_name/src
 RUN sed -i 's/-DTPM_NUVOTON/-DTPM_NUVOTON $(CFLAGS)/' makefile
 RUN CFLAGS="-DNV_MEMORY_SIZE=32768 -DMIN_EVICT_OBJECTS=7" make -j$(nproc) \
 && cp tpm_server /usr/local/bin
-RUN rm -rf $ibmtpm_name/src $ibmtpm_name.tar.gz
-
+RUN rm -rf $ibmtpm_name/src $ibmtpm_name
 
 # Download and install SoftHSMv2
 WORKDIR /tmp
@@ -101,10 +96,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Install the wrappers for the Rust binaries installed earlier
 COPY _exec_wrapper /usr/local/bin/
 RUN ls /opt/rust/bin | xargs -n1 -I% ln -s /usr/local/bin/_exec_wrapper /usr/local/bin/$(basename %)
-
-# Adding the targets for the cross-compilation tests
-RUN rustup target add armv7-unknown-linux-gnueabihf
-RUN rustup target add aarch64-unknown-linux-gnu
 
 # Add users for multitenancy tests
 RUN useradd -m parsec-client-1
