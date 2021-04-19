@@ -41,7 +41,11 @@ impl Default for AteccKeySlot {
 
 impl AteccKeySlot {
     // Check if software key attributes are compatible with hardware slot configuration
-    pub fn key_attr_vs_config(&self, slot: u8, key_attr: &Attributes) -> Result<(), ResponseStatus> {
+    pub fn key_attr_vs_config(
+        &self,
+        slot: u8,
+        key_attr: &Attributes,
+    ) -> Result<(), ResponseStatus> {
         // (1) Check attributes.key_type
         if !self.is_key_type_ok(slot, key_attr) {
             return Err(ResponseStatus::PsaErrorNotSupported);
@@ -77,19 +81,21 @@ impl AteccKeySlot {
             Type::EccKeyPair {
                 curve_family: EccFamily::SecpR1,
             } => {
-                // P256 private key has 256 bits (32 bytes),
-                // Only private key is stored - public one can be computed when needed
+                // P256 private key has 256 bits (32 bytes).
+                // Only private key is stored - public one can be computed when needed.
+                // The private key can onlly be stored encrypted and the encryption key must be set,
+                // see set_write_encryption_key() call in new().
                 key_attr.bits == 256
                     && self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
                     && self.config.write_config == rust_cryptoauthlib::WriteConfig::Encrypt
-                    && self.config.ecc_key_attr.is_private == true
-                    && self.config.is_secret == true
-            },
+                    && self.config.ecc_key_attr.is_private
+                    && self.config.is_secret
+            }
             Type::EccPublicKey {
                 curve_family: EccFamily::SecpR1,
             } => {
-                // The uncompressed public key is 512 bits (64 bytes) but .
-                // New - first few slots are too short for ECC public key
+                // The uncompressed public key is 512 bits (64 bytes).
+                // First few (7) slots are too short for ECC public key.
                 key_attr.bits == 512
                     && self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
                     && slot >= rust_cryptoauthlib::ATCA_ATECC_MIN_SLOT_IDX_FOR_PUB_KEY
@@ -308,7 +314,6 @@ mod tests {
         // Type::RawData => NOK
         attributes.key_type = Type::RawData;
         assert_eq!(key_slot.is_key_type_ok(0, &attributes), false);
-
 
         // KeyType::Aes
         // Type::EccKeyPair => NOK

@@ -68,7 +68,7 @@ const KEY_PAIR_DATA: [u8; 609] = [
 ];
 
 #[cfg(feature = "cryptoauthlib-provider")]
-#[allow(dead_code)]
+//#[allow(dead_code)]
 const PRIV_KEY_ECC: [u8; 32] = [
     0xF5, 0xDB, 0x6B, 0xA1, 0x82, 0x22, 0xCE, 0xC1, 0x54, 0x53, 0xE5, 0x63, 0xDE, 0xC5, 0xC7, 0x94,
     0xCD, 0x48, 0x95, 0xF2, 0x8C, 0xC2, 0x7F, 0x50, 0xC2, 0x7E, 0xC3, 0x1B, 0xAF, 0x44, 0xEA, 0x54,
@@ -374,4 +374,13 @@ fn import_key_pair() {
             KEY_PAIR_DATA.to_vec(),
         )
         .unwrap();
+}
+
+#[cfg(feature = "cryptoauthlib-provider")]
+#[test]
+fn import_ecc_private_key() {
+    let mut client = TestClient::new();
+    let key_name = String::from("import_ecc_private_key");
+
+    client.import_ecc_pair_secp_r1_key(key_name, PRIV_KEY_ECC.to_vec()).unwrap();
 }

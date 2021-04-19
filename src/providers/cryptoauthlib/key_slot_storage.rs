@@ -104,7 +104,7 @@ impl KeySlotStorage {
                         Ok(()) => return Ok(slot),
                         Err(err) => return Err(err),
                     };
-                },
+                }
                 Err(_) => continue,
             }
         }
