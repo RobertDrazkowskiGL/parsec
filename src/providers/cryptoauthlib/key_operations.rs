@@ -91,13 +91,7 @@ impl Provider {
     ) -> Result<psa_import_key::Result> {
         let key_name = op.key_name;
         let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
-        match self.key_info_store.does_not_exist(&key_triple) {
-            Ok(()) => (),
-            Err(error) => {
-                error!("Key triple already exists in storage. {}", error);
-                return Err(error);
-            }
-        };
+        self.key_info_store.does_not_exist(&key_triple)?;
 
         let key_attributes = op.attributes;
         let key_type = match Provider::get_calib_key_type(&key_attributes) {
@@ -107,7 +101,7 @@ impl Provider {
         let slot_id = match self.find_suitable_slot(&key_attributes) {
             Ok(slot) => slot,
             Err(error) => {
-                error!("Failed to find suitable storage slot for key. {}", error);
+                warn!("Failed to find suitable storage slot for key. {}", error);
                 return Err(error);
             }
         };
@@ -125,7 +119,7 @@ impl Provider {
                         return Ok(psa_import_key::Result {});
                     }
                     Err(error) => {
-                        error!("Insert key triple to KeyInfoManager failed. {}", error);
+                        warn!("Insert key triple to KeyInfoManager failed. {}", error);
                         return Err(error);
                     }
                 }

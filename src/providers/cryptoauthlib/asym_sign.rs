@@ -3,6 +3,7 @@
 use super::Provider;
 use crate::authenticators::ApplicationName;
 use crate::key_info_managers::KeyTriple;
+use log::warn;
 use parsec_interface::operations::psa_sign_hash;
 use parsec_interface::requests::{ProviderID, ResponseStatus, Result};
 
@@ -20,18 +21,18 @@ impl Provider {
 
         let mut signature = vec![0u8; rust_cryptoauthlib::ATCA_SIG_SIZE];
         let hash = op.hash.to_vec();
-        match self.device.sign_hash(
+        let result = self.device.sign_hash(
             rust_cryptoauthlib::SignMode::External(hash),
             key_id,
             &mut signature,
-        ) {
+        );
+        match result {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => Ok(psa_sign_hash::Result {
                 signature: signature.into(),
             }),
             _ => {
-                let error = ResponseStatus::PsaErrorNotPermitted;
-                format_error!("Sign status: ", error);
-                Err(error)
+                warn!("Sign failed: {}", result);
+                Err(ResponseStatus::PsaErrorHardwareFailure)
             }
         }
     }

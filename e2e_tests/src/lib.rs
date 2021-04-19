@@ -610,7 +610,7 @@ impl TestClient {
                 key_type: Type::EccPublicKey {
                     curve_family: EccFamily::SecpR1,
                 },
-                bits: 256,
+                bits: 512,
                 policy: Policy {
                     usage_flags: UsageFlags {
                         sign_hash: false,
@@ -624,7 +624,7 @@ impl TestClient {
                         copy: false,
                         derive: false,
                     },
-                    permitted_algorithms: AsymmetricSignature::DeterministicEcdsa {
+                    permitted_algorithms: AsymmetricSignature::Ecdsa {
                         hash_alg: Hash::Sha256.into(),
                     }
                     .into(),
