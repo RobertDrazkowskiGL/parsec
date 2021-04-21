@@ -20,9 +20,11 @@ impl Provider {
         op.validate(key_attributes)?;
 
         let mut signature = vec![0u8; rust_cryptoauthlib::ATCA_SIG_SIZE];
-        let hash = op.hash.to_vec();
+        let hash: Vec<u8> = op.hash.to_vec();
+        let sign_mode = rust_cryptoauthlib::SignMode::External(hash);
+        warn!("psa_sign_hash_internal: slot {}", key_id);
         let result = self.device.sign_hash(
-            rust_cryptoauthlib::SignMode::External(hash),
+            sign_mode,
             key_id,
             &mut signature,
         );

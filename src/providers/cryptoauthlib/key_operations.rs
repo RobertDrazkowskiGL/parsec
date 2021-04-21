@@ -5,7 +5,7 @@ use super::Provider;
 use crate::authenticators::ApplicationName;
 use log::{error, warn};
 use parsec_interface::operations::{psa_destroy_key, psa_generate_key, psa_import_key};
-use parsec_interface::requests::{ResponseStatus, Result};
+use parsec_interface::requests::{Opcode, ResponseStatus, Result};
 use parsec_interface::secrecy::ExposeSecret;
 
 impl Provider {
@@ -23,11 +23,12 @@ impl Provider {
             error!("Failed to get type for key. {}", e);
             e
         })?;
-        let slot_id = self.find_suitable_slot(&key_attributes).map_err(|e| {
+        let slot_id = self.find_suitable_slot(&key_attributes, Some(Opcode::PsaGenerateKey)).map_err(|e| {
             warn!("Failed to find suitable storage slot for key. {}", e);
             e
         })?;
         // generate key
+        warn!("psa_generate_key_internal: key_type {:?}, slot {}", key_type, slot_id);
         match self.device.gen_key(key_type, slot_id) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 match self
@@ -98,7 +99,7 @@ impl Provider {
             Ok(x) => x,
             Err(error) => return Err(error),
         };
-        let slot_id = match self.find_suitable_slot(&key_attributes) {
+        let slot_id = match self.find_suitable_slot(&key_attributes, Some(Opcode::PsaImportKey)) {
             Ok(slot) => slot,
             Err(error) => {
                 warn!("Failed to find suitable storage slot for key. {}", error);
