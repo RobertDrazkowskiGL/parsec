@@ -382,5 +382,9 @@ fn import_ecc_private_key() {
     let mut client = TestClient::new();
     let key_name = String::from("import_ecc_private_key");
 
+    if !client.is_operation_supported(Opcode::PsaImportKey) {
+        return;
+    }
+
     client.import_ecc_key_pair_secpr1_ecdsa_sha256(key_name, PRIV_KEY_ECC.to_vec()).unwrap();
 }

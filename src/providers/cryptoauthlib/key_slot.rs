@@ -6,7 +6,6 @@ use parsec_interface::operations::psa_algorithm::{
 };
 use parsec_interface::operations::psa_key_attributes::{Attributes, EccFamily, Type};
 use parsec_interface::requests::{Opcode, ResponseStatus};
-use log::warn;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 /// Software status of a ATECC slot
@@ -50,17 +49,14 @@ impl AteccKeySlot {
     ) -> Result<(), ResponseStatus> {
         // (1) Check attributes.key_type
         if !self.is_key_type_ok(slot, key_attr) {
-            warn!("wrong key_type: slot {}", slot);
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         // (2) Check attributes.policy.usage_flags and slot number
         if !self.is_usage_flags_ok(key_attr) {
-            warn!("wrong usage_flags: slot {}", slot);
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         // (3) Check attributes.policy.permitted_algorithms
         if !self.is_permitted_algorithms_ok(key_attr, op) {
-            warn!("wrong permitted_algorithms: slot {}", slot);
             return Err(ResponseStatus::PsaErrorNotSupported);
         }
         Ok(())
@@ -90,11 +86,6 @@ impl AteccKeySlot {
                 // Only private key is stored - public one can be computed when needed.
                 // The private key can onlly be stored encrypted and the encryption key must be set,
                 // see set_write_encryption_key() call in new().
-                println!("is_key_type_ok: key_attr.bits {}", key_attr.bits);
-                println!("is_key_type_ok: self.config.key_type {:?}", self.config.key_type);
-                println!("is_key_type_ok: self.config.write_config {:?}", self.config.write_config);
-                println!("is_key_type_ok: self.config.ecc_key_attr.is_private {}", self.config.ecc_key_attr.is_private);
-                println!("is_key_type_ok: self.config.is_secret {}", self.config.is_secret);
                 key_attr.bits == 256
                     && self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
                     && self.config.ecc_key_attr.is_private
@@ -143,11 +134,9 @@ impl AteccKeySlot {
     }
 
     fn is_permitted_algorithms_ok(&self, key_attr: &Attributes, op: Option<Opcode>) -> bool {
-        println!("is_permitted_algorithms_ok: key_attr.policy.permitted_algorithms == {:?}", key_attr.policy.permitted_algorithms);
         match key_attr.policy.permitted_algorithms {
             // Hash algorithm
             Algorithm::Hash(Hash::Sha256) => {
-                println!("is_permitted_algorithms_ok: key_attr.policy.permitted_algorithms == Algorithm::Hash(Hash::Sha256)");
                 true
             },
             // Mac::Hmac algorithm

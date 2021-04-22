@@ -28,7 +28,6 @@ impl Provider {
             e
         })?;
         // generate key
-        warn!("psa_generate_key_internal: key_type {:?}, slot {}", key_type, slot_id);
         match self.device.gen_key(key_type, slot_id) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 match self

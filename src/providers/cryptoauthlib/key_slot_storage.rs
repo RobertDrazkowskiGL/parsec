@@ -4,7 +4,6 @@ use crate::providers::cryptoauthlib::key_slot::{AteccKeySlot, KeySlotStatus};
 use parsec_interface::operations::psa_key_attributes::Attributes;
 use parsec_interface::requests::{Opcode, ResponseStatus};
 use std::sync::RwLock;
-use log::warn;
 
 #[derive(Debug)]
 pub struct KeySlotStorage {
@@ -96,27 +95,18 @@ impl KeySlotStorage {
     /// If found, the slot is marked Busy.
     pub fn find_suitable_slot(&self, key_attr: &Attributes, op: Option<Opcode>) -> Result<u8, ResponseStatus> {
         let mut key_slots = self.storage.write().unwrap();
-        match op {
-            Some(opcode) => warn!("find_suitable_slot: {:?}", opcode),
-            None => warn!("find_suitable_slot: None"),
-        };
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
             if !key_slots[slot as usize].is_free() {
-                warn!("Slot {} is not free", slot);
                 continue;
             }
             match key_slots[slot as usize].key_attr_vs_config(slot, key_attr, op) {
                 Ok(_) => {
-                    warn!("Slot {} fits criteria", slot);
                     match key_slots[slot as usize].set_slot_status(KeySlotStatus::Busy) {
                         Ok(()) => return Ok(slot),
                         Err(err) => return Err(err),
                     };
                 }
-                Err(_) => {
-                    warn!("Slot {} does not fit criteria", slot);
-                    continue
-                },
+                Err(_) => continue,
             }
         }
         Err(ResponseStatus::PsaErrorInsufficientStorage)
