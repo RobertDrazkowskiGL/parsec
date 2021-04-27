@@ -196,6 +196,30 @@ impl Provider {
             _ => Err(ResponseStatus::PsaErrorInvalidArgument),
         }
     }
+
+    pub(super) fn psa_export_key_internal(
+        &self,
+        app_name: ApplicationName,
+        op: psa_export_key::Operation,
+    ) -> Result<psa_export_key::Result> {
+        let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
+        op.validate(key_attributes)?;
+        
+        let key_id = self.get_key_id(&key_triple)?;
+        let mut exported_key = Vec::new();
+
+        match self.device.export_key(key_id, &exported_key) {
+            rust_cryptoauthlib::AtcaStatus::AtcaSuccess => Ok(psa_export_key::Result {
+                data: exported_key.into(),
+            }),
+            _ => {
+                let error = ResponseStatus::PsaErrorInvalidArgument;
+                error!("Export key failed. {}", error);
+                Err(error)
+            }
+        }
+    }
 }
 
 // Extract a raw key.
