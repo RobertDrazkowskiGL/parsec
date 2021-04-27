@@ -4,7 +4,7 @@ use super::key_slot::KeySlotStatus;
 use super::Provider;
 use crate::authenticators::ApplicationName;
 use log::{error, warn};
-use parsec_interface::operations::{psa_destroy_key, psa_generate_key, psa_export_key};
+use parsec_interface::operations::{psa_destroy_key, psa_export_key, psa_generate_key};
 use parsec_interface::requests::{ResponseStatus, Result};
 
 impl Provider {
@@ -92,16 +92,27 @@ impl Provider {
     ) -> Result<psa_export_key::Result> {
         let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
         let key_id = self.get_key_id(&key_triple)?;
+        let key_attributes = self.key_info_store.get_key_attributes(&key_triple);
         let mut exported_key = Vec::new();
 
-        match self.device.export_key(key_id, &exported_key) {
-            rust_cryptoauthlib::AtcaStatus::AtcaSuccess => Ok(psa_export_key::Result {
-                data: exported_key.into(),
-            }),
-            _ => {
-                let error = ResponseStatus::PsaErrorInvalidArgument;
-                error!("Export key failed. {}", error);
-                Err(error)
+        if !key_attributes.policy.can_export() {
+            let error = ResponseStatus::PsaErrorNotPermitted;
+            error!("Export key not permitted. {}", error);
+            return Err(error);
+        }
+
+        if self.get_calib_key_type(&key_attributes) == rust_cryptoauthlib::KeyType::ShaOrText
+            || rust_cryptoauthlib::KeyType::Aes
+        {
+            match self.device.export_key(key_id, &exported_key) {
+                rust_cryptoauthlib::AtcaStatus::AtcaSuccess => Ok(psa_export_key::Result {
+                    data: exported_key.into(),
+                }),
+                _ => {
+                    let error = ResponseStatus::PsaErrorInvalidArgument;
+                    error!("Export key failed. {}", error);
+                    Err(error)
+                }
             }
         }
     }

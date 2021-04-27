@@ -19,8 +19,8 @@ use std::io::{Error, ErrorKind};
 use uuid::Uuid;
 
 use parsec_interface::operations::{
-    psa_destroy_key, psa_generate_key, psa_generate_random, psa_hash_compare, psa_hash_compute,
-    psa_export_key,
+    psa_destroy_key, psa_export_key, psa_generate_key, psa_generate_random, psa_hash_compare,
+    psa_hash_compute,
 };
 
 mod generate_random;
