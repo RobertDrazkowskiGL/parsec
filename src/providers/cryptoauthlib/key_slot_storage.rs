@@ -1,7 +1,8 @@
-use crate::key_info_managers::KeyInfo;
+// Copyright 2021 Contributors to the Parsec project.
+// SPDX-License-Identifier: Apache-2.0
 use crate::providers::cryptoauthlib::key_slot::{AteccKeySlot, KeySlotStatus};
 use parsec_interface::operations::psa_key_attributes::Attributes;
-use parsec_interface::requests::ResponseStatus;
+use parsec_interface::requests::{Opcode, ResponseStatus};
 use std::sync::RwLock;
 
 #[derive(Debug)]
@@ -18,9 +19,14 @@ impl KeySlotStorage {
         }
     }
 
-    /// Validate KeyInfo data store entry against hardware
-    /// Mark slot busy when all checks pass
-    pub fn key_validate_and_mark_busy(&self, key_info: &KeyInfo) -> Result<Option<String>, String> {
+    /// Validate KeyInfo data store entry against hardware.
+    /// Mark slot busy when all checks pass.
+    /// Expected to be called from Provider::new() only.
+    pub fn key_validate_and_mark_busy(
+        &self,
+        key_id: u8,
+        key_attr: &Attributes,
+    ) -> Result<Option<String>, String> {
         let mut key_slots = self.storage.write().unwrap();
 
         // Get CryptoAuthLibProvider mapping of key triple to key info and check
@@ -28,7 +34,7 @@ impl KeySlotStorage {
         // (2) if there are no two key triples mapping to a single ATECC slot - warning only ATM
 
         // check (1)
-        match key_slots[key_info.id[0] as usize].key_attr_vs_config(&key_info.attributes) {
+        match key_slots[key_id as usize].key_attr_vs_config(key_id, &key_attr, None) {
             Ok(_) => (),
             Err(err) => {
                 let error = std::format!("ATECC slot configuration mismatch: {}", err);
@@ -36,14 +42,15 @@ impl KeySlotStorage {
             }
         };
         // check(2)
-        match key_slots[key_info.id[0] as usize].reference_check_and_set() {
+        match key_slots[key_id as usize].reference_check_and_set() {
             Ok(_) => (),
             Err(slot) => {
                 let warning = std::format!("Superfluous reference(s) to ATECC slot {:?}", slot);
                 return Ok(Some(warning));
             }
         };
-        match key_slots[key_info.id[0] as usize].set_slot_status(KeySlotStatus::Busy) {
+        // Slot 'key_id' validated - trying to mark it busy
+        match key_slots[key_id as usize].set_slot_status(KeySlotStatus::Busy) {
             Ok(()) => Ok(None),
             Err(err) => {
                 let error = std::format!("Unable to set hardware slot status: {}", err);
@@ -56,21 +63,19 @@ impl KeySlotStorage {
     pub fn set_hw_config(&self, hw_config: &[rust_cryptoauthlib::AtcaSlot]) -> Result<(), String> {
         // RwLock protection
         let mut key_slots = self.storage.write().unwrap();
-        for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
-            if hw_config[slot as usize].id != slot {
-                return Err(
-                    "configuration mismatch: vector index does not match its id.".to_string(),
-                );
-            }
-            key_slots[slot as usize] = AteccKeySlot {
-                ref_count: 0u8,
-                status: {
-                    match hw_config[slot as usize].is_locked {
-                        true => KeySlotStatus::Locked,
-                        _ => KeySlotStatus::Free,
-                    }
-                },
-                config: hw_config[slot as usize].config,
+
+        for slot in hw_config.iter().cloned() {
+            if slot.is_valid() {
+                key_slots[slot.id as usize] = AteccKeySlot {
+                    ref_count: 0u8,
+                    status: {
+                        match slot.is_locked {
+                            true => KeySlotStatus::Locked,
+                            _ => KeySlotStatus::Free,
+                        }
+                    },
+                    config: slot.config,
+                };
             }
         }
         Ok(())
@@ -88,20 +93,22 @@ impl KeySlotStorage {
 
     /// Iterate through key_slots and find a free one with configuration matching attributes.
     /// If found, the slot is marked Busy.
-    pub fn find_suitable_slot(&self, key_attr: &Attributes) -> Result<u8, ResponseStatus> {
+    pub fn find_suitable_slot(&self, key_attr: &Attributes, op: Option<Opcode>) -> Result<u8, ResponseStatus> {
         let mut key_slots = self.storage.write().unwrap();
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
             if !key_slots[slot as usize].is_free() {
                 continue;
             }
-            match key_slots[slot as usize].key_attr_vs_config(key_attr) {
-                Ok(_) => match key_slots[slot as usize].set_slot_status(KeySlotStatus::Busy) {
-                    Ok(()) => return Ok(slot),
-                    Err(err) => return Err(err),
-                },
+            match key_slots[slot as usize].key_attr_vs_config(slot, key_attr, op) {
+                Ok(_) => {
+                    match key_slots[slot as usize].set_slot_status(KeySlotStatus::Busy) {
+                        Ok(()) => return Ok(slot),
+                        Err(err) => return Err(err),
+                    };
+                }
                 Err(_) => continue,
             }
         }
-        Err(ResponseStatus::PsaErrorStorageFailure)
+        Err(ResponseStatus::PsaErrorInsufficientStorage)
     }
 }

@@ -596,6 +596,80 @@ impl TestClient {
         self.import_key(key_name, attributes, data)
     }
 
+    /// Import a 512 bit ECC public key.
+    /// The key can only be used for verifying with the Ecdsa signing algorithm with SHA-256.
+    pub fn import_ecc_public_secp_r1_ecdsa_sha256_key(
+        &mut self,
+        key_name: String,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        self.import_key(
+            key_name,
+            Attributes {
+                lifetime: Lifetime::Persistent,
+                key_type: Type::EccPublicKey {
+                    curve_family: EccFamily::SecpR1,
+                },
+                bits: 512,
+                policy: Policy {
+                    usage_flags: UsageFlags {
+                        sign_hash: false,
+                        verify_hash: true,
+                        sign_message: false,
+                        verify_message: true,
+                        export: false,
+                        encrypt: false,
+                        decrypt: false,
+                        cache: false,
+                        copy: false,
+                        derive: false,
+                    },
+                    permitted_algorithms: AsymmetricSignature::Ecdsa {
+                        hash_alg: Hash::Sha256.into(),
+                    }
+                    .into(),
+                },
+            },
+            data,
+        )
+    }
+
+    pub fn import_ecc_key_pair_secpr1_ecdsa_sha256(
+        &mut self, 
+        key_name: String,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        self.import_key(
+            key_name,
+            Attributes {
+                lifetime: Lifetime::Persistent,
+                key_type: Type::EccKeyPair {
+                    curve_family: EccFamily::SecpR1,
+                },
+                bits: 256,
+                policy: Policy {
+                    usage_flags: UsageFlags {
+                        sign_hash: true,
+                        verify_hash: true,
+                        sign_message: true,
+                        verify_message: true,
+                        export: false,
+                        encrypt: false,
+                        decrypt: false,
+                        cache: false,
+                        copy: false,
+                        derive: false,
+                    },
+                    permitted_algorithms: AsymmetricSignature::Ecdsa {
+                        hash_alg: Hash::Sha256.into(),
+                    }
+                    .into(),
+                },
+            },
+            data
+        )
+    }
+
     /// Exports a key
     pub fn export_key(&mut self, key_name: String) -> Result<Vec<u8>> {
         self.basic_client

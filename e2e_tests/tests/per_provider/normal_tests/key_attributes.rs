@@ -5,9 +5,10 @@ use parsec_client::core::interface::operations::psa_algorithm::{
     Algorithm, AsymmetricSignature, Hash,
 };
 use parsec_client::core::interface::operations::psa_key_attributes::{
-    Attributes, Lifetime, Policy, Type, UsageFlags,
+    Attributes, Lifetime, Policy, Type, UsageFlags, EccFamily,
 };
-use parsec_client::core::interface::requests::{ProviderID, ResponseStatus};
+#[allow(unused)]
+use parsec_client::core::interface::requests::{Opcode, ProviderID, ResponseStatus};
 
 // Ignored as only RSA key types are supported for now.
 #[ignore]
@@ -15,7 +16,13 @@ use parsec_client::core::interface::requests::{ProviderID, ResponseStatus};
 fn wrong_type() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_type");
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
 
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
     // Wrong key type
     let key_type = Type::Derive;
     let permitted_algorithm =
@@ -57,49 +64,101 @@ fn wrong_type() {
 fn wrong_usage_flags() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_usage_flags");
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
 
-    let key_type = Type::RsaKeyPair;
-    let permitted_algorithm =
-        Algorithm::AsymmetricSignature(AsymmetricSignature::RsaPkcs1v15Sign {
+    let status;
+    #[cfg(not(feature = "cryptoauthlib-provider"))]
+    {
+        let key_type = Type::RsaKeyPair;
+        let permitted_algorithm =
+            Algorithm::AsymmetricSignature(AsymmetricSignature::RsaPkcs1v15Sign {
+                hash_alg: Hash::Sha256.into(),
+            });
+        let key_attributes = Attributes {
+            lifetime: Lifetime::Persistent,
+            key_type,
+            bits: 1024,
+            policy: Policy {
+                usage_flags: UsageFlags {
+                    // Forbid signing
+                    sign_hash: false,
+                    verify_hash: true,
+                    sign_message: false,
+                    verify_message: false,
+                    export: false,
+                    encrypt: false,
+                    decrypt: false,
+                    cache: false,
+                    copy: false,
+                    derive: false,
+                },
+                permitted_algorithms: permitted_algorithm,
+            },
+        };
+
+        client
+            .generate_key(key_name.clone(), key_attributes)
+            .unwrap();
+        status = client
+            .sign_with_rsa_sha256(key_name, vec![0xDE; 32])
+            .unwrap_err();
+    }
+    #[cfg(feature = "cryptoauthlib-provider")]
+    {
+        let key_type = Type::EccKeyPair {
+            curve_family: EccFamily::SecpR1,
+        };
+        let permitted_algorithm = 
+            Algorithm::AsymmetricSignature(AsymmetricSignature::Ecdsa {
             hash_alg: Hash::Sha256.into(),
         });
-    let key_attributes = Attributes {
-        lifetime: Lifetime::Persistent,
-        key_type,
-        bits: 1024,
-        policy: Policy {
-            usage_flags: UsageFlags {
-                // Forbid signing
-                sign_hash: false,
-                verify_hash: true,
-                sign_message: false,
-                verify_message: false,
-                export: false,
-                encrypt: false,
-                decrypt: false,
-                cache: false,
-                copy: false,
-                derive: false,
+        let key_attributes = Attributes {
+            lifetime: Lifetime::Persistent,
+            key_type,
+            bits: 256,
+            policy: Policy {
+                usage_flags: UsageFlags {
+                    // Forbid signing
+                    sign_hash: false,
+                    verify_hash: true,
+                    sign_message: false,
+                    verify_message: false,
+                    export: false,
+                    encrypt: false,
+                    decrypt: false,
+                    cache: false,
+                    copy: false,
+                    derive: false,
+                },
+                permitted_algorithms: permitted_algorithm,
             },
-            permitted_algorithms: permitted_algorithm,
-        },
-    };
+        };
 
-    client
-        .generate_key(key_name.clone(), key_attributes)
-        .unwrap();
-    let status = client
-        .sign_with_rsa_sha256(key_name, vec![0xDE; 32])
-        .unwrap_err();
+        client
+            .generate_key(key_name.clone(), key_attributes)
+            .unwrap();
+        status = client
+            .sign_with_ecdsa_sha256(key_name, vec![0xDE; 32])
+            .unwrap_err();        
+    }
 
     assert_eq!(status, ResponseStatus::PsaErrorNotPermitted);
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
 fn wrong_permitted_algorithm() {
     let mut client = TestClient::new();
     let key_name = String::from("wrong_permitted_algorithm");
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
 
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return;
+    }
     let key_type = Type::RsaKeyPair;
     // Do not permit RSA PKCS 1v15 signing algorithm with SHA-256.
     let permitted_algorithm =

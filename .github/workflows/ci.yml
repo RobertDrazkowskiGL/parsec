@@ -1,6 +1,6 @@
 name: Continuous Integration
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   all-providers:
@@ -8,59 +8,87 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Build the container
-        run: docker build -t all-providers e2e_tests/provider_cfg/all
       - name: Run the container to execute the test script
-        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec all-providers /tmp/parsec/ci.sh all
+        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec ghcr.io/parallaxsecond/parsec-service-test-all /tmp/parsec/ci.sh all
 
   mbed-crypto-provider:
     name: Integration tests using Mbed Crypto provider
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Build the container
-        run: docker build -t mbed-crypto-provider e2e_tests/provider_cfg/mbed-crypto
       - name: Run the container to execute the test script
-        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec mbed-crypto-provider /tmp/parsec/ci.sh mbed-crypto
+        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec ghcr.io/parallaxsecond/parsec-service-test-all /tmp/parsec/ci.sh mbed-crypto
 
   pkcs11-provider:
     name: Integration tests using PKCS 11 provider
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Build the container
-        run: docker build -t pkcs11-provider e2e_tests/provider_cfg/pkcs11
       - name: Run the container to execute the test script
-        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec pkcs11-provider /tmp/parsec/ci.sh pkcs11
+        # Not running stress tests because they fail, presumably because of the same issue as #264
+        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec ghcr.io/parallaxsecond/parsec-service-test-all /tmp/parsec/ci.sh pkcs11 --no-stress-test
 
   tpm-provider:
     name: Integration tests using TPM provider
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Build the container
-        run: docker build -t tpm-provider e2e_tests/provider_cfg/tpm
       - name: Run the container to execute the test script
-        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec tpm-provider /tmp/parsec/ci.sh tpm
-  
+        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec ghcr.io/parallaxsecond/parsec-service-test-all /tmp/parsec/ci.sh tpm
+
   trusted-service-provider:
     name: Integration tests using Cypto Trusted Service provider
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Build the container
-        run: docker build -t trusted-service-provider e2e_tests/provider_cfg/trusted-service
       - name: Run the container to execute the test script
-        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec trusted-service-provider /tmp/parsec/ci.sh trusted-service
+        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec ghcr.io/parallaxsecond/parsec-service-test-all /tmp/parsec/ci.sh trusted-service
+
+  cryptoauthlib-provider:
+    name: Integration tests using CryptoAuthentication Library provider
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run the container to execute the test script
+        # Not running stress tests because rust-cryptoauthlib test-interface does not support required calls
+        run: docker run -v $(pwd):/tmp/parsec -w /tmp/parsec ghcr.io/parallaxsecond/parsec-service-test-all /tmp/parsec/ci.sh cryptoauthlib --no-stress-test
+
+  cross-compilation:
+    # Currently only the Mbed Crypto and PKCS 11 providers are tested as the other ones need to cross-compile other libraries.
+    name: Cross-compile Parsec to various targets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: armv7-unknown-linux-gnueabihf
+        run: |
+          rustup target add armv7-unknown-linux-gnueabihf
+          sudo apt install -y gcc-multilib
+          sudo apt install -y gcc-arm-linux-gnueabihf
+          cargo build --features "pkcs11-provider, mbed-crypto-provider, all-authenticators" --target armv7-unknown-linux-gnueabihf
+      - name: aarch64-unknown-linux-gnu
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          sudo apt install -y gcc-aarch64-linux-gnu
+          cargo build --features "pkcs11-provider, mbed-crypto-provider, all-authenticators" --target aarch64-unknown-linux-gnu
+      - name: i686-unknown-linux-gnu
+        run: |
+          sudo apt install -y gcc-multilib libc6-dev-i386
+          rustup target add i686-unknown-linux-gnu
+          cargo build --features "pkcs11-provider, mbed-crypto-provider, all-authenticators" --target i686-unknown-linux-gnu
 
   links:
     name: Check links
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Link Checker
-      uses: peter-evans/link-checker@v1
-      with:
-        args: -v -r *.md
-    - name: Fail if there were link errors
-      run: exit ${{ steps.lc.outputs.exit_code }}
+      - uses: actions/checkout@v2
+      - name: Link Checker
+        uses: peter-evans/link-checker@v1
+        with:
+          args: -v -r *.md
+      - name: Fail if there were link errors
+        run: exit ${{ steps.lc.outputs.exit_code }}

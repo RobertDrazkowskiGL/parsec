@@ -72,12 +72,8 @@ fn list_opcodes() {
     let _ = core_provider_opcodes.insert(Opcode::ListOpcodes);
     let _ = core_provider_opcodes.insert(Opcode::ListKeys);
 
-    // Not that much to be tested ATM
-    let _ = crypto_providers_cal.insert(Opcode::PsaHashCompute);
-    let _ = crypto_providers_cal.insert(Opcode::PsaHashCompare);
+    // Not that much to be tested with test-interface
     let _ = crypto_providers_cal.insert(Opcode::PsaGenerateRandom);
-    let _ = crypto_providers_cal.insert(Opcode::PsaGenerateKey);
-    let _ = crypto_providers_cal.insert(Opcode::PsaDestroyKey);
 
     assert_eq!(
         client
