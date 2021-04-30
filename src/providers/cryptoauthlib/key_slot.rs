@@ -130,15 +130,17 @@ impl AteccKeySlot {
             result &= self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey;
             result &= self.config.ecc_key_attr.is_private;
         }
+        // if key_attr.policy.usage_flags.verify_hash || key_attr.policy.usage_flags.verify_message {
+        //     result &= self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey;
+        //     // result &= self.config.no_mac;
+        // }
         result
     }
 
     fn is_permitted_algorithms_ok(&self, key_attr: &Attributes, op: Option<Opcode>) -> bool {
         match key_attr.policy.permitted_algorithms {
             // Hash algorithm
-            Algorithm::Hash(Hash::Sha256) => {
-                true
-            },
+            Algorithm::Hash(Hash::Sha256) => true,
             // Mac::Hmac algorithm
             Algorithm::Mac(Mac::Truncated {
                 mac_alg:
@@ -153,7 +155,7 @@ impl AteccKeySlot {
                 !self.config.no_mac
                     && self.config.key_type != rust_cryptoauthlib::KeyType::P256EccKey
                     && !self.config.ecc_key_attr.is_private
-            },
+            }
             // Mac::CbcMac and Mac::Cmac algorithms
             Algorithm::Mac(Mac::Truncated {
                 mac_alg: FullLengthMac::CbcMac,
@@ -166,14 +168,14 @@ impl AteccKeySlot {
             })
             | Algorithm::Mac(Mac::FullLength(FullLengthMac::Cmac)) => {
                 !self.config.no_mac && self.config.key_type == rust_cryptoauthlib::KeyType::Aes
-            },
+            }
             // Cipher
             Algorithm::Cipher(Cipher::CbcPkcs7)
             | Algorithm::Cipher(Cipher::Ctr)
             | Algorithm::Cipher(Cipher::Cfb)
             | Algorithm::Cipher(Cipher::Ofb) => {
                 self.config.key_type == rust_cryptoauthlib::KeyType::Aes
-            },
+            }
             // Aead
             Algorithm::Aead(Aead::AeadWithDefaultLengthTag(AeadWithDefaultLengthTag::Ccm))
             | Algorithm::Aead(Aead::AeadWithDefaultLengthTag(AeadWithDefaultLengthTag::Gcm))
@@ -201,37 +203,38 @@ impl AteccKeySlot {
                             // Up to two WriteConfig values, depending on operation
                             self.config.ecc_key_attr.ext_sign
                                 && match op {
-                                    Some(opcode) => { 
-                                        match opcode {
-                                            Opcode::PsaImportKey => {
-                                                self.config.write_config == rust_cryptoauthlib::WriteConfig::Encrypt
-                                            },
-                                            Opcode::PsaGenerateKey => {
-                                                self.config.write_config == rust_cryptoauthlib::WriteConfig::Encrypt
-                                                    || self.config.write_config == rust_cryptoauthlib::WriteConfig::Never
-                                            },
-                                            _ => false,
+                                    Some(opcode) => match opcode {
+                                        Opcode::PsaImportKey => {
+                                            self.config.write_config
+                                                == rust_cryptoauthlib::WriteConfig::Encrypt
                                         }
-                                    }
+                                        Opcode::PsaGenerateKey => {
+                                            self.config.write_config
+                                                == rust_cryptoauthlib::WriteConfig::Encrypt
+                                                || self.config.write_config
+                                                    == rust_cryptoauthlib::WriteConfig::Never
+                                        }
+                                        _ => false,
+                                    },
                                     None => true,
                                 }
-                        },
+                        }
                         Type::EccPublicKey {
                             curve_family: EccFamily::SecpR1,
                         } => {
                             // This is for verifying
 
                             self.config.ecc_key_attr.ext_sign
-                                && match self.config.write_config {
+                                && matches!(
+                                    self.config.write_config,
                                     rust_cryptoauthlib::WriteConfig::Encrypt
-                                    | rust_cryptoauthlib::WriteConfig::Never
-                                    | rust_cryptoauthlib::WriteConfig::PubInvalid => true,
-                                    _ => false,
-                                }
-                        },
+                                        | rust_cryptoauthlib::WriteConfig::Never
+                                        | rust_cryptoauthlib::WriteConfig::PubInvalid
+                                )
+                        }
                         _ => false,
                     }
-            },
+            }
             Algorithm::AsymmetricSignature(AsymmetricSignature::DeterministicEcdsa {
                 hash_alg: SignHash::Specific(Hash::Sha256),
             }) => {
@@ -551,13 +554,19 @@ mod tests {
             hash_alg: Hash::Sha256,
         })
         .into();
-        assert_eq!(key_slot.is_permitted_algorithms_ok(&attributes, None), false);
+        assert_eq!(
+            key_slot.is_permitted_algorithms_ok(&attributes, None),
+            false
+        );
         // && AsymmetricSignature::DeterministicEcdsa => NOK
         attributes.policy.permitted_algorithms = AsymmetricSignature::DeterministicEcdsa {
             hash_alg: Hash::Sha256.into(),
         }
         .into();
-        assert_eq!(key_slot.is_permitted_algorithms_ok(&attributes, None), false);
+        assert_eq!(
+            key_slot.is_permitted_algorithms_ok(&attributes, None),
+            false
+        );
         // && RawKeyAgreement::Ecdh => OK
         attributes.policy.permitted_algorithms = KeyAgreement::Raw(RawKeyAgreement::Ecdh).into();
         assert_eq!(key_slot.is_permitted_algorithms_ok(&attributes, None), true);

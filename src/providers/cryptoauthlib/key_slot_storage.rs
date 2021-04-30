@@ -93,7 +93,11 @@ impl KeySlotStorage {
 
     /// Iterate through key_slots and find a free one with configuration matching attributes.
     /// If found, the slot is marked Busy.
-    pub fn find_suitable_slot(&self, key_attr: &Attributes, op: Option<Opcode>) -> Result<u8, ResponseStatus> {
+    pub fn find_suitable_slot(
+        &self,
+        key_attr: &Attributes,
+        op: Option<Opcode>,
+    ) -> Result<u8, ResponseStatus> {
         let mut key_slots = self.storage.write().unwrap();
         for slot in 0..rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT {
             if !key_slots[slot as usize].is_free() {

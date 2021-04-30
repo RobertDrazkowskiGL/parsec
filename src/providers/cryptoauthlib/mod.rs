@@ -352,6 +352,15 @@ impl Provide for Provider {
         trace!("psa_verify_hash ingress");
         self.psa_verify_hash_internal(app_name, op)
     }
+
+    // fn psa_export_public_key(
+    //     &self,
+    //     app_name: ApplicationName,
+    //     op: psa_export_public_key::Operation,
+    // ) -> Result<psa_export_public_key::Result> {
+    //     trace!("psa_verify_hash ingress");
+    //     self.psa_export_public_key_internal(app_name, op)
+    // }
 }
 
 /// CryptoAuthentication Library Provider builder

@@ -23,10 +23,12 @@ impl Provider {
             error!("Failed to get type for key. {}", e);
             e
         })?;
-        let slot_id = self.find_suitable_slot(&key_attributes, Some(Opcode::PsaGenerateKey)).map_err(|e| {
-            warn!("Failed to find suitable storage slot for key. {}", e);
-            e
-        })?;
+        let slot_id = self
+            .find_suitable_slot(&key_attributes, Some(Opcode::PsaGenerateKey))
+            .map_err(|e| {
+                warn!("Failed to find suitable storage slot for key. {}", e);
+                e
+            })?;
         // generate key
         match self.device.gen_key(key_type, slot_id) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
@@ -105,10 +107,11 @@ impl Provider {
                 return Err(error);
             }
         };
-        let key_data_r = op.data.expose_secret();
 
-        let status = self.device.import_key(key_type, key_data_r, slot_id);
         let error_status: rust_cryptoauthlib::AtcaStatus;
+        let status = self
+            .device
+            .import_key(key_type, op.data.expose_secret(), slot_id);
         match status {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
                 match self
@@ -151,4 +154,37 @@ impl Provider {
             }
         }
     }
+
+    // pub fn psa_export_public_key_internal(
+    //     &self,
+    //     app_name: ApplicationName,
+    //     op: psa_verify_hash::Operation,
+    // ) -> Result<psa_export_public_key::Result> {
+    //     let key_name = op.key_name;
+    //     let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+    //     let key_id = self.key_info_store.get_key_id::<u8>(&key_triple)?;
+    //     let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
+
+    //     op.validate(key_attributes)?;
+
+    //     match key_attributes {
+    //         Type::EccKeyPair {
+    //             curve_family: EccFamily::SecpR1,
+    //         } => {
+    //             // Inside ATECC there is no need to store public keys - the public key
+    //             // can be calculated from private one. This saves precious slots.
+    //             let mut raw_public_key: Vec<u8>;
+    //             match self.device.get_public_key(key_id, &op.data) {
+    //                 AtcaStatus::AtcaSuccess => (),
+    //                 _ => return Err(ResponseStatus::PsaErrorHardwareFailure),
+    //             }
+    //             rust_cryptoauthlib::VerifyMode::Internal::External(raw_public_key)
+    //         }
+    //         Type::EccPublicKey {
+    //             curve_family: EccFamily::SecpR1,
+    //         } => rust_cryptoauthlib::VerifyMode::Internal(key_id),
+    //         _ => Err(PsaErrorNotSupported),
+    //     }
+
+    // }
 }

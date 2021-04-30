@@ -8,7 +8,11 @@ use parsec_interface::requests::{Opcode, ResponseStatus};
 impl Provider {
     /// Iterate through key_slots and find a free one with configuration matching attributes.
     /// If found, the slot is marked Busy.
-    pub fn find_suitable_slot(&self, key_attr: &Attributes, op: Option<Opcode>) -> Result<u8, ResponseStatus> {
+    pub fn find_suitable_slot(
+        &self,
+        key_attr: &Attributes,
+        op: Option<Opcode>,
+    ) -> Result<u8, ResponseStatus> {
         self.key_slots.find_suitable_slot(key_attr, op)
     }
 
