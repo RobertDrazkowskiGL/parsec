@@ -77,17 +77,15 @@ impl Provider {
             .device
             .verify_hash(verify_mode, &op.hash, &op.signature)
         {
-            Ok(is_verified) => {
-                match is_verified {
-                    true  => Ok(psa_verify_hash::Result {}),
-                    false => Err(ResponseStatus::PsaErrorInvalidSignature),
-                }
-            }
+            Ok(is_verified) => match is_verified {
+                true => Ok(psa_verify_hash::Result {}),
+                false => Err(ResponseStatus::PsaErrorInvalidSignature),
+            },
             Err(status) => {
                 format_error!("Verify status: ", status);
                 match status {
                     AtcaStatus::AtcaInvalidSize => Err(ResponseStatus::PsaErrorInvalidSignature),
-                    _ => Err(ResponseStatus::PsaErrorGenericError)
+                    _ => Err(ResponseStatus::PsaErrorGenericError),
                 }
             }
         }

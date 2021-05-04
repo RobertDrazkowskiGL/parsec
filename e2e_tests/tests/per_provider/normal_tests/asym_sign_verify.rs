@@ -9,7 +9,7 @@ use ring::signature::{self, UnparsedPublicKey};
 use rsa::{PaddingScheme, PublicKey, RSAPublicKey};
 use sha2::{Digest, Sha256};
 #[cfg(feature = "cryptoauthlib-provider")]
-use crate::per_provider::normal_tests::import_key::{PRIV_KEY_ECC, PUB_KEY_ECC};
+use crate::per_provider::normal_tests::import_key::{ECC_PRIVATE_KEY, ECC_PUBLIC_KEY};
 
 const HASH: [u8; 32] = [
     0x69, 0x3E, 0xDB, 0x1B, 0x22, 0x79, 0x03, 0xF4, 0xC0, 0xBF, 0xD6, 0x91, 0x76, 0x37, 0x84, 0xA2,
@@ -152,8 +152,8 @@ fn private_sign_public_verify() -> Result<()> {
     hasher.update(b"Bob wrote this message.");
     let hash = hasher.finalize().to_vec();
 
-    client.import_ecc_key_pair_secpr1_ecdsa_sha256(private_key_name.clone(), PRIV_KEY_ECC.to_vec()).unwrap();
-    client.import_ecc_public_secp_r1_ecdsa_sha256_key(public_key_name.clone(), PUB_KEY_ECC.to_vec()).unwrap();
+    client.import_ecc_key_pair_secpr1_ecdsa_sha256(private_key_name.clone(), ECC_PRIVATE_KEY.to_vec()).unwrap();
+    client.import_ecc_public_secp_r1_ecdsa_sha256_key(public_key_name.clone(), ECC_PUBLIC_KEY.to_vec()).unwrap();
     
     let signature = client.sign_with_ecdsa_sha256(private_key_name,hash.clone()).unwrap();
 
