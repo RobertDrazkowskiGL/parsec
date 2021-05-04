@@ -425,5 +425,5 @@ fn import_ecc_private_key() {
         return;
     }
 
-    client.import_ecc_pair_secp_r1_key(key_name, ECC_PRIVATE_KEY.to_vec()).unwrap();
+    client.import_ecc_key_pair_secpr1_ecdsa_sha256(key_name, ECC_PRIVATE_KEY.to_vec()).unwrap();
 }

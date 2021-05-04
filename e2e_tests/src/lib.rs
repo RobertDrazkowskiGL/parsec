@@ -382,7 +382,7 @@ impl TestClient {
         )
     }
 
-    /// Import ECC key pair with secp R1 curve family.
+    /// Generate ECC key pair with secp R1 curve family.
     /// The key can only be used for key agreement with Ecdh algorithm.
     pub fn generate_ecc_pair_secp_r1_key(&mut self, key_name: String) -> Result<()> {
         let attributes = Attributes {

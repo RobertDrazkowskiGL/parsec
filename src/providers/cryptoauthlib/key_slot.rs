@@ -88,7 +88,6 @@ impl AteccKeySlot {
                 // see set_write_encryption_key() call in new().
                 (key_attr.bits == 0 || key_attr.bits == 256)
                     && self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey
-                    && self.config.write_config == rust_cryptoauthlib::WriteConfig::Encrypt
                     && self.config.ecc_key_attr.is_private
                     && self.config.is_secret
             }
@@ -132,10 +131,6 @@ impl AteccKeySlot {
             result &= self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey;
             result &= self.config.ecc_key_attr.is_private;
         }
-        // if key_attr.policy.usage_flags.verify_hash || key_attr.policy.usage_flags.verify_message {
-        //     result &= self.config.key_type == rust_cryptoauthlib::KeyType::P256EccKey;
-        //     // result &= self.config.no_mac;
-        // }
         result
     }
 
@@ -246,7 +241,7 @@ impl AteccKeySlot {
             // AsymmetricEncryption
             Algorithm::AsymmetricEncryption(..) => {
                 // Why only RSA? it could work with ECC...
-                // It could not - no suuport for ECC encryption in ATECC.
+                // It could not - no suport for ECC encryption in ATECC.
                 false
             }
             // KeyAgreement
