@@ -194,9 +194,7 @@ impl AteccKeySlot {
                         Type::EccKeyPair {
                             curve_family: EccFamily::SecpR1,
                         } => {
-                            // This is for signing
-
-                            // Only External hashing
+                            // CryptoAuthLib supports using pair of keys for both signing and verifying.
                             // Up to two WriteConfig values, depending on operation
                             self.config.ecc_key_attr.ext_sign
                                 && match op {
@@ -219,14 +217,15 @@ impl AteccKeySlot {
                         Type::EccPublicKey {
                             curve_family: EccFamily::SecpR1,
                         } => {
-                            // This is for verifying
-
+                            // CryptoAuthLib supports using public key for verifying only.
+                            // Using Always is considred unsafe (the key can be read from chip),
+                            // but using PubInvalid is not supported by rust-cryptoauthlib 0.3.0
                             self.config.ecc_key_attr.ext_sign
                                 && matches!(
                                     self.config.write_config,
                                     rust_cryptoauthlib::WriteConfig::Encrypt
                                         | rust_cryptoauthlib::WriteConfig::Never
-                                        | rust_cryptoauthlib::WriteConfig::PubInvalid
+                                        | rust_cryptoauthlib::WriteConfig::Always //| rust_cryptoauthlib::WriteConfig::PubInvalid
                                 )
                         }
                         _ => false,
@@ -241,7 +240,7 @@ impl AteccKeySlot {
             // AsymmetricEncryption
             Algorithm::AsymmetricEncryption(..) => {
                 // Why only RSA? it could work with ECC...
-                // It could not - no suport for ECC encryption in ATECC.
+                // It could not - no support for ECC encryption in ATECC.
                 false
             }
             // KeyAgreement
@@ -523,7 +522,7 @@ mod tests {
             key_type: Type::EccPublicKey {
                 curve_family: EccFamily::SecpR1,
             },
-            bits: 512,
+            bits: 256,
             policy: Policy {
                 usage_flags: UsageFlags {
                     sign_hash: true,

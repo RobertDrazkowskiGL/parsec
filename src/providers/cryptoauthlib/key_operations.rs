@@ -16,7 +16,7 @@ impl Provider {
         op: psa_generate_key::Operation,
     ) -> Result<psa_generate_key::Result> {
         let key_name = op.key_name;
-        let key_triple = self.key_info_store.get_key_triple(app_name, key_name.clone());
+        let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
 
         self.key_info_store.does_not_exist(&key_triple)?;
         let key_attributes = op.attributes;

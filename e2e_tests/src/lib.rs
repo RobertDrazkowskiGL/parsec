@@ -635,7 +635,7 @@ impl TestClient {
     }
 
     pub fn import_ecc_key_pair_secpr1_ecdsa_sha256(
-        &mut self, 
+        &mut self,
         key_name: String,
         data: Vec<u8>,
     ) -> Result<()> {

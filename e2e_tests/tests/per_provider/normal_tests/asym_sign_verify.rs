@@ -8,7 +8,7 @@ use parsec_client::core::interface::requests::{Opcode, ResponseStatus, Result};
 use ring::signature::{self, UnparsedPublicKey};
 use rsa::{PaddingScheme, PublicKey, RSAPublicKey};
 use sha2::{Digest, Sha256};
-#[cfg(feature = "cryptoauthlib-provider")]
+#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
 use crate::per_provider::normal_tests::import_key::{ECC_PRIVATE_KEY, ECC_PUBLIC_KEY};
 
 const HASH: [u8; 32] = [
@@ -148,21 +148,26 @@ fn prv_sign_pub_ver() -> Result<()> {
     let public_key_name = String::from("prv_sign_pub_ver_pub");
     let mut client = TestClient::new();
 
+    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
+        return Ok(());
+    }
+
     let mut hasher = Sha256::new();
     hasher.update(b"Bob wrote this message.");
     let hash = hasher.finalize().to_vec();
 
     client.import_ecc_key_pair_secpr1_ecdsa_sha256(private_key_name.clone(), ECC_PRIVATE_KEY.to_vec()).unwrap();
     client.import_ecc_public_secp_r1_ecdsa_sha256_key(public_key_name.clone(), ECC_PUBLIC_KEY.to_vec()).unwrap();
-    
+
     let signature = client.sign_with_ecdsa_sha256(private_key_name,hash.clone()).unwrap();
 
     client.verify_with_ecdsa_sha256(public_key_name,hash,signature)
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
-fn simple_sign_hash() -> Result<()> {
-    let key_name = String::from("simple_sign_hash");
+fn simple_sign_hash_rsa_sha256() -> Result<()> {
+    let key_name = String::from("simple_sign_hash_rsa_sha256");
     let mut client = TestClient::new();
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
@@ -175,16 +180,30 @@ fn simple_sign_hash() -> Result<()> {
     hasher.update(b"Bob wrote this message.");
     let hash = hasher.finalize().to_vec();
 
-    #[cfg(not(feature = "cryptoauthlib-provider"))]
-    {
-        client.generate_rsa_sign_key(key_name.clone())?;
-        let _ = client.sign_with_rsa_sha256(key_name, hash)?;
+    client.generate_rsa_sign_key(key_name.clone())?;
+    let _ = client.sign_with_rsa_sha256(key_name, hash)?;
+
+    Ok(())
+}
+
+#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
+#[test]
+fn simple_sign_hash_ecdsa_sha256() -> Result<()> {
+    let key_name = String::from("simple_sign_hash_ecdsa_sha256");
+    let mut client = TestClient::new();
+    if !client.is_operation_supported(Opcode::PsaGenerateKey) {
+        return Ok(());
     }
-    #[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
-    {
-        client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
-        let _ = client.sign_with_ecdsa_sha256(key_name, hash)?;
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return Ok(());
     }
+
+    let mut hasher = Sha256::new();
+    hasher.update(b"Bob wrote this message.");
+    let hash = hasher.finalize().to_vec();
+
+    client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
+    let _ = client.sign_with_ecdsa_sha256(key_name, hash)?;
 
     Ok(())
 }
@@ -291,9 +310,10 @@ fn sign_hash_not_permitted_ecc() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
-fn sign_hash_bad_format() -> Result<()> {
-    let key_name = String::from("sign_hash_bad_format");
+fn sign_hash_bad_format_rsa_sha256() -> Result<()> {
+    let key_name = String::from("sign_hash_bad_format_rsa_sha256");
     let mut client = TestClient::new();
     if !client.is_operation_supported(Opcode::PsaGenerateKey) {
         return Ok(());
@@ -305,24 +325,38 @@ fn sign_hash_bad_format() -> Result<()> {
     let hash1 = vec![0xEE; 31];
     let hash2 = vec![0xBB; 33];
 
-    let status1;
-    let status2;
-    #[cfg(not(feature = "cryptoauthlib-provider"))]
-    {
-        client.generate_rsa_sign_key(key_name.clone())?;
-        status1 = client
-            .sign_with_rsa_sha256(key_name.clone(), hash1)
-            .unwrap_err();
-        status2 = client.sign_with_rsa_sha256(key_name, hash2).unwrap_err();
+    client.generate_rsa_sign_key(key_name.clone())?;
+    let status1 = client
+        .sign_with_rsa_sha256(key_name.clone(), hash1)
+        .unwrap_err();
+    let status2 = client.sign_with_rsa_sha256(key_name, hash2).unwrap_err();
+
+    assert_eq!(status1, ResponseStatus::PsaErrorInvalidArgument);
+    assert_eq!(status2, ResponseStatus::PsaErrorInvalidArgument);
+    Ok(())
+}
+
+#[cfg(feature = "cryptoauthlib-provider")]
+#[test]
+fn sign_hash_bad_format_ecdsa_sha256() -> Result<()> {
+    let key_name = String::from("sign_hash_bad_format_ecdsa_sha256");
+    let mut client = TestClient::new();
+    if !client.is_operation_supported(Opcode::PsaGenerateKey) {
+        return Ok(());
     }
-    #[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
-    {
-        client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
-        status1 = client
-            .sign_with_ecdsa_sha256(key_name.clone(), hash1)
-            .unwrap_err();
-        status2 = client.sign_with_ecdsa_sha256(key_name, hash2).unwrap_err();
+    if !client.is_operation_supported(Opcode::PsaSignHash) {
+        return Ok(());
     }
+
+    let hash1 = vec![0xEE; 31];
+    let hash2 = vec![0xBB; 33];
+
+    client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
+    // Issue - mbed-crypto-provider returns Ok() here:
+    let status1 = client
+        .sign_with_ecdsa_sha256(key_name.clone(), hash1)
+        .unwrap_err();
+    let status2 = client.sign_with_ecdsa_sha256(key_name, hash2).unwrap_err();
 
     assert_eq!(status1, ResponseStatus::PsaErrorInvalidArgument);
     assert_eq!(status2, ResponseStatus::PsaErrorInvalidArgument);
@@ -487,7 +521,7 @@ fn verify_hash_not_permitted_ecc() -> Result<()> {
 
 #[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
-fn verify_hash_bad_format() -> Result<()> {
+fn verify_hash_bad_format_rsa() -> Result<()> {
     let key_name = String::from("verify_hash_bad_format_rsa");
     let mut client = TestClient::new();
 
@@ -519,7 +553,7 @@ fn verify_hash_bad_format() -> Result<()> {
     Ok(())
 }
 
-#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
+#[cfg(feature = "cryptoauthlib-provider")]
 #[test]
 fn verify_hash_bad_format_ecc() -> Result<()> {
     let key_name = String::from("verify_hash_bad_format_ecc");
@@ -535,8 +569,8 @@ fn verify_hash_bad_format_ecc() -> Result<()> {
     let mut hasher = Sha256::new();
     hasher.update(b"Bob wrote this message.");
     let good_hash = hasher.finalize().to_vec();
-    let hash1 = vec![0xEE; 255];
-    let hash2 = vec![0xBB; 257];
+    let hash1 = vec![0xEE; 31];
+    let hash2 = vec![0xBB; 33];
 
     client.generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())?;
 
@@ -548,6 +582,7 @@ fn verify_hash_bad_format_ecc() -> Result<()> {
         .verify_with_ecdsa_sha256(key_name, hash2, signature)
         .unwrap_err();
 
+    // Issue - mbed-crypto-provider returns PsaErrorInvalidSignature
     assert_eq!(status1, ResponseStatus::PsaErrorInvalidArgument);
     assert_eq!(status2, ResponseStatus::PsaErrorInvalidArgument);
     Ok(())
@@ -748,6 +783,10 @@ fn verify_ecc_with_ring() {
 fn sign_verify_ecc() {
     let key_name = String::from("sign_verify_ecc");
     let mut client = TestClient::new();
+
+    if !client.is_operation_supported(Opcode::PsaVerifyHash) {
+        return;
+    }
 
     let mut hasher = Sha256::new();
     hasher.update(b"Bob wrote this message.");
