@@ -9,8 +9,8 @@ use parsec_interface::requests::{ResponseStatus, Result};
 
 impl Provider {
     /// Calculate SHA2-256 digest for a given message using CALib.
-    /// Implement proper return value types.
-    pub fn sha256(&self, msg: &[u8]) -> Result<psa_hash_compute::Result> {
+    /// Ensure proper return value type.
+    fn sha256(&self, msg: &[u8]) -> Result<psa_hash_compute::Result> {
         let mut hash = vec![0u8; rust_cryptoauthlib::ATCA_SHA2_256_DIGEST_SIZE];
         match self.device.sha(msg.to_vec(), &mut hash) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
@@ -35,7 +35,7 @@ impl Provider {
         op: psa_hash_compute::Operation,
     ) -> Result<psa_hash_compute::Result> {
         match op.alg {
-            Hash::Sha256 => self.sha256(&op.input.to_vec()),
+            Hash::Sha256 => self.sha256(&op.input),
             _ => Err(ResponseStatus::PsaErrorNotSupported),
         }
     }
@@ -53,18 +53,14 @@ impl Provider {
         match op.alg {
             Hash::Sha256 => {
                 // compute hash an check result
-                match self.sha256(&op.input) {
-                    Ok(psa_hash_compute::Result { hash }) => {
-                        // compare hashes
-                        if op.hash != hash {
-                            let error = ResponseStatus::PsaErrorInvalidSignature;
-                            error!("Hash comparison failed: {}", error);
-                            Err(error)
-                        } else {
-                            Ok(psa_hash_compare::Result)
-                        }
-                    }
-                    Err(error) => Err(error),
+                let hash = self.sha256(&op.input)?.hash;
+
+                if op.hash != hash {
+                    let error = ResponseStatus::PsaErrorInvalidSignature;
+                    error!("Hash comparison failed: {}", error);
+                    Err(error)
+                } else {
+                    Ok(psa_hash_compare::Result)
                 }
             }
             _ => Err(ResponseStatus::PsaErrorNotSupported),
