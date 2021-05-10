@@ -10,7 +10,7 @@ use parsec_interface::requests::{ResponseStatus, Result};
 impl Provider {
     /// Calculate SHA2-256 digest for a given message using CALib.
     /// Ensure proper return value type.
-    fn sha256(&self, msg: &[u8]) -> Result<psa_hash_compute::Result> {
+    pub fn sha256(&self, msg: &[u8]) -> Result<psa_hash_compute::Result> {
         let mut hash = vec![0u8; rust_cryptoauthlib::ATCA_SHA2_256_DIGEST_SIZE];
         match self.device.sha(msg.to_vec(), &mut hash) {
             rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
