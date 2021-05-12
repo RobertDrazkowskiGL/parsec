@@ -22,7 +22,7 @@ use parsec_client::core::interface::operations::psa_algorithm::{
 use parsec_client::core::interface::operations::psa_key_attributes::{
     Attributes, EccFamily, Lifetime, Policy, Type, UsageFlags,
 };
-use parsec_client::core::interface::requests::{Opcode, ProviderID, ResponseStatus, Result};
+use parsec_client::core::interface::requests::{Opcode, ProviderId, ResponseStatus, Result};
 use parsec_client::core::ipc_handler::unix_socket;
 use parsec_client::error::Error;
 use std::collections::HashSet;
@@ -35,7 +35,7 @@ const TEST_TIMEOUT: Duration = Duration::from_secs(60);
 #[derive(Debug)]
 pub struct TestClient {
     basic_client: BasicClient,
-    created_keys: Option<HashSet<(String, Option<String>, ProviderID)>>,
+    created_keys: Option<HashSet<(String, Option<String>, ProviderId)>>,
 }
 
 fn convert_error(err: Error) -> ResponseStatus {
@@ -81,12 +81,12 @@ impl TestClient {
     }
 
     /// Manually set the provider to execute the requests.
-    pub fn set_provider(&mut self, provider: ProviderID) {
+    pub fn set_provider(&mut self, provider: ProviderId) {
         self.basic_client.set_implicit_provider(provider);
     }
 
     /// Get client provider
-    pub fn provider(&self) -> ProviderID {
+    pub fn provider(&self) -> ProviderId {
         self.basic_client.implicit_provider()
     }
 
@@ -959,7 +959,7 @@ impl TestClient {
     }
 
     /// Lists the opcodes available for one provider to execute.
-    pub fn list_opcodes(&mut self, provider_id: ProviderID) -> Result<HashSet<Opcode>> {
+    pub fn list_opcodes(&mut self, provider_id: ProviderId) -> Result<HashSet<Opcode>> {
         self.basic_client
             .list_opcodes(provider_id)
             .map_err(convert_error)

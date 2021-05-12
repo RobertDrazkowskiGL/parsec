@@ -47,7 +47,7 @@ impl Provider {
         // check hash length
         if op.hash.len() != op.alg.hash_length() {
             let error = ResponseStatus::PsaErrorInvalidArgument;
-            error!("Hash length comparison failed: {}", error);
+            error!("Invalid input hash length: {}", error);
             return Err(error);
         }
         match op.alg {

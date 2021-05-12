@@ -8,7 +8,7 @@ use parsec_client::core::interface::operations::psa_algorithm::{
 use parsec_client::core::interface::operations::psa_key_attributes::{
     Attributes, Lifetime, Policy, Type, UsageFlags, EccFamily,
 };
-use parsec_client::core::interface::requests::{Opcode, ProviderID, ResponseStatus};
+use parsec_client::core::interface::requests::{Opcode, ProviderId, ResponseStatus};
 
 // Ignored as only RSA key types are supported for now.
 #[ignore]
@@ -188,7 +188,7 @@ fn wrong_permitted_algorithm() {
 
     // The Mbed Crypto provider currently does not support other algorithms than the RSA PKCS 1v15
     // signing algorithm with hash when checking policies only.
-    if client.provider() == ProviderID::MbedCrypto {
+    if client.provider() == ProviderId::MbedCrypto {
         return;
     }
 

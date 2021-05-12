@@ -28,6 +28,9 @@ impl Provider {
         }
     }
 
+    // Get the public key for hash verification.
+    // Either the public key is stored in slot (internal mode)
+    // or it must be calculated from a private key in slot (external mode)
     fn ecdsa_verify_mode_get(
         &self,
         key_id: u8,
@@ -37,9 +40,6 @@ impl Provider {
             Type::EccKeyPair {
                 curve_family: EccFamily::SecpR1,
             } => {
-                // There is no need to store a key pair in the Atecc - the public key can
-                // be computed from private key.
-                // Except it is forbidden for a given slot...
                 let mut raw_public_key: Vec<u8> = Vec::new();
                 match self.device.get_public_key(key_id, &mut raw_public_key) {
                     AtcaStatus::AtcaSuccess => {
@@ -115,11 +115,7 @@ impl Provider {
                 hash_alg: SignHash::Specific(Hash::Sha256),
             } => {
                 let key_id = self.key_info_store.get_key_id::<u8>(&key_triple)?;
-                let verify_mode = match self.ecdsa_verify_mode_get(key_id, key_attributes.key_type)
-                {
-                    Ok(mode) => mode,
-                    Err(err) => return Err(err),
-                };
+                let verify_mode = self.ecdsa_verify_mode_get(key_id, key_attributes.key_type)?;
                 self.ecdsa_hash_verify(verify_mode, op.hash, op.signature)
             }
             _ => Err(ResponseStatus::PsaErrorNotSupported),
@@ -131,8 +127,9 @@ impl Provider {
         app_name: ApplicationName,
         op: psa_sign_message::Operation,
     ) -> Result<psa_sign_message::Result> {
-        let key_name = op.key_name.clone();
-        let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let key_triple = self
+            .key_info_store
+            .get_key_triple(app_name, op.key_name.clone());
         let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
 
         op.validate(key_attributes)?;
@@ -145,12 +142,9 @@ impl Provider {
                 // Compute a hash
                 let hash = self.sha256(&op.message)?.hash;
                 // Sign computed hash
-                match self.ecdsa_hash_sign(key_id, &hash) {
-                    Ok(result) => Ok(psa_sign_message::Result {
-                        signature: result.signature,
-                    }),
-                    Err(error) => Err(error),
-                }
+                let result = self.ecdsa_hash_sign(key_id, &hash)?.signature;
+
+                Ok(psa_sign_message::Result { signature: result })
             }
             _ => Err(ResponseStatus::PsaErrorNotSupported),
         }
@@ -161,8 +155,9 @@ impl Provider {
         app_name: ApplicationName,
         op: psa_verify_message::Operation,
     ) -> Result<psa_verify_message::Result> {
-        let key_name = op.key_name.clone();
-        let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let key_triple = self
+            .key_info_store
+            .get_key_triple(app_name, op.key_name.clone());
         let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
 
         op.validate(key_attributes)?;
@@ -175,16 +170,11 @@ impl Provider {
                 // Calculate a hash of a message
                 let hash = self.sha256(&op.message)?.hash;
                 // Determine verify mode
-                let verify_mode = match self.ecdsa_verify_mode_get(key_id, key_attributes.key_type)
-                {
-                    Ok(mode) => mode,
-                    Err(err) => return Err(err),
-                };
-                // Verify the hash against key from slot
-                match self.ecdsa_hash_verify(verify_mode, hash, op.signature) {
-                    Ok(_) => Ok(psa_verify_message::Result {}),
-                    Err(error) => Err(error),
-                }
+                let verify_mode = self.ecdsa_verify_mode_get(key_id, key_attributes.key_type)?;
+                // Verify the hash using public key
+                let _ = self.ecdsa_hash_verify(verify_mode, hash, op.signature)?;
+
+                Ok(psa_verify_message::Result {})
             }
             _ => Err(ResponseStatus::PsaErrorNotSupported),
         }
