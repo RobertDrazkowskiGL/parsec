@@ -52,9 +52,9 @@ impl Provider {
         }
         match op.alg {
             Hash::Sha256 => {
-                // compute hash an check result
+                // compute hash
                 let hash = self.sha256(&op.input)?.hash;
-
+                // compare input vs. computed hash
                 if op.hash != hash {
                     let error = ResponseStatus::PsaErrorInvalidSignature;
                     error!("Hash comparison failed: {}", error);
