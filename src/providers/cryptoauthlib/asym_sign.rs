@@ -22,7 +22,7 @@ impl Provider {
                 signature: signature.into(),
             }),
             _ => {
-                error!("Sign failed: {}", result);
+                error!("Sign failed, hardware reported: {}", result);
                 Err(ResponseStatus::PsaErrorHardwareFailure)
             }
         }
