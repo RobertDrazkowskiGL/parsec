@@ -207,7 +207,7 @@ dependencies = [
 [[package]]
 name = "cryptoki"
 version = "0.1.1"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoki.git?rev=d0cef67662f4993dbfe89b2ca5b25307b7df1e8b#d0cef67662f4993dbfe89b2ca5b25307b7df1e8b"
+source = "git+https://github.com/parallaxsecond/rust-cryptoki?rev=0345c8caa40fd9a64012f053721aa3de52ad3e3e#0345c8caa40fd9a64012f053721aa3de52ad3e3e"
 dependencies = [
  "cryptoki-sys",
  "derivative",
@@ -220,7 +220,7 @@ dependencies = [
 [[package]]
 name = "cryptoki-sys"
 version = "0.1.1"
-source = "git+ssh://git@portal-ua.globallogic.com/arm-pelion-egde/rust-cryptoki.git?rev=d0cef67662f4993dbfe89b2ca5b25307b7df1e8b#d0cef67662f4993dbfe89b2ca5b25307b7df1e8b"
+source = "git+https://github.com/parallaxsecond/rust-cryptoki?rev=0345c8caa40fd9a64012f053721aa3de52ad3e3e#0345c8caa40fd9a64012f053721aa3de52ad3e3e"
 dependencies = [
  "libloading",
  "target-lexicon",

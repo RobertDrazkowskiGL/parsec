@@ -11,8 +11,7 @@ publish = false
 
 [dependencies]
 serde = { version = "1.0.123", features = ["derive"] }
-#parsec-client = { version = "0.12.0", features = ["testing"] }
-parsec-client = { git = "ssh://git@portal-ua.globallogic.com/arm-pelion-egde/parsec-rust-client.git", rev="804fd65ff8c7919da32088db23f2ac4e8cdda493", features = ["testing"] }
+parsec-client = { git = "https://github.com/parallaxsecond/parsec-client-rust.git", rev = "9d342655e1b1dcf29459973669deda5637f84429", features = ["testing"]}
 log = "0.4.14"
 # Compatible version with crate rsa
 rand = "0.7.3"
