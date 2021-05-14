@@ -28,7 +28,6 @@ mod asym_sign;
 mod generate_random;
 mod hash;
 mod key_management;
-mod key_operations;
 mod key_slot;
 mod key_slot_storage;
 
@@ -402,15 +401,6 @@ impl Provide for Provider {
         } else {
             self.psa_export_public_key_internal(app_name, op)
         }
-    }
-
-    fn psa_export_public_key(
-        &self,
-        app_name: ApplicationName,
-        op: psa_export_public_key::Operation,
-    ) -> Result<psa_export_public_key::Result> {
-        trace!("psa_export_public_key ingress");
-        self.psa_export_public_key_internal(app_name, op)
     }
 }
 

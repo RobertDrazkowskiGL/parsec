@@ -6,6 +6,7 @@ use parsec_client::core::interface::operations::psa_key_attributes::*;
 use parsec_client::core::interface::requests::{Opcode, ResponseStatus, Result};
 #[cfg(any(feature = "mbed-crypto-provider", feature = "tpm-provider"))]
 use ring::signature::{self, UnparsedPublicKey};
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 use rsa::{PaddingScheme, PublicKey, RSAPublicKey};
 use sha2::{Digest, Sha256};
 #[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
@@ -704,6 +705,7 @@ fn fail_verify_hash2_ecc() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
 fn asym_verify_with_rsa_crate() {
     let key_name = String::from("asym_verify_with_rsa_crate");
@@ -822,10 +824,10 @@ fn sign_verify_msg_ecc() {
         .unwrap();
 
     let signature = client
-        .sign_msg_with_ecdsa_sha256(key_name.clone(), msg.clone())
+        .sign_msg_with_ecdsa_sha256(key_name.clone(), msg.to_vec())
         .unwrap();
     client
-        .verify_msg_with_ecdsa_sha256(key_name.clone(), msg, signature)
+        .verify_msg_with_ecdsa_sha256(key_name.clone(), msg.to_vec(), signature)
         .unwrap();
 }
 
