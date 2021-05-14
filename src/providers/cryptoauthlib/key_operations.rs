@@ -184,6 +184,28 @@ impl Provider {
             }
         }
     }
+    pub(super) fn psa_export_public_key_internal(
+        &self,
+        app_name: ApplicationName,
+        op: psa_export_public_key::Operation,
+    ) -> Result<psa_export_public_key::Result> {
+        let key_name = op.key_name;
+        let key_triple = self.key_info_store.get_key_triple(app_name, key_name);
+        let slot_number = self.key_info_store.get_key_id(&key_triple)?;
+        let mut public_key = Vec::new();
+
+        match self.device.get_public_key(slot_number, &mut public_key) {
+            rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
+                Ok(psa_export_public_key::Result {data: public_key.into()})
+            }
+            _ => {
+                let error = ResponseStatus::PsaErrorInvalidArgument;
+                error!("Export public key failed. {}", error);
+                Err(error)
+            }
+        }
+
+    }
 }
 
 fn extract_raw_key(key_type: Type, secret: &Secret<Vec<u8>>) -> Result<Secret<Vec<u8>>> {
