@@ -734,7 +734,7 @@ impl TestClient {
         )
     }
 
-    /// Verifies a signature.
+    /// Verifies a hash signature.
     pub fn verify(
         &mut self,
         key_name: String,
@@ -747,7 +747,7 @@ impl TestClient {
             .map_err(convert_error)
     }
 
-    /// Verifies a signature made with an RSA key.
+    /// Verifies a hash signature made with an RSA key.
     pub fn verify_with_rsa_sha256(
         &mut self,
         key_name: String,
@@ -764,7 +764,7 @@ impl TestClient {
         )
     }
 
-    /// Verifies a signature made with an ECDSA key.
+    /// Verifies a hash signature made with an ECDSA key.
     pub fn verify_with_ecdsa_sha256(
         &mut self,
         key_name: String,
@@ -777,6 +777,59 @@ impl TestClient {
                 hash_alg: Hash::Sha256.into(),
             },
             hash,
+            signature,
+        )
+    }
+
+    /// Signs a message with a key.
+    pub fn sign_msg(
+        &mut self,
+        key_name: String,
+        alg: AsymmetricSignature,
+        msg: Vec<u8>,
+    ) -> Result<Vec<u8>> {
+        self.basic_client
+            .psa_sign_message(key_name, &msg, alg)
+            .map_err(convert_error)
+    }
+
+    /// Signs a message with an ECDSA key.
+    pub fn sign_msg_with_ecdsa_sha256(&mut self, key_name: String, msg: Vec<u8>) -> Result<Vec<u8>> {
+        self.sign_msg(
+            key_name,
+            AsymmetricSignature::Ecdsa {
+                hash_alg: Hash::Sha256.into(),
+            },
+            msg,
+        )
+    }    
+
+    /// Verifies a message signature.
+    pub fn verify_msg(
+        &mut self,
+        key_name: String,
+        alg: AsymmetricSignature,
+        msg: Vec<u8>,
+        signature: Vec<u8>,
+    ) -> Result<()> {
+        self.basic_client
+            .psa_verify_message(key_name, &msg, alg, &signature)
+            .map_err(convert_error)
+    }
+    
+    /// Verifies a message signature made with an ECDSA key and SHA256 hash.
+    pub fn verify_msg_with_ecdsa_sha256(
+        &mut self,
+        key_name: String,
+        msg: Vec<u8>,
+        signature: Vec<u8>,
+    ) -> Result<()> {
+        self.verify_msg(
+            key_name,
+            AsymmetricSignature::Ecdsa {
+                hash_alg: Hash::Sha256.into(),
+            },
+            msg,
             signature,
         )
     }

@@ -780,8 +780,8 @@ fn verify_ecc_with_ring() {
 
 #[cfg(any(feature = "mbed-crypto-provider", feature = "tpm-provider", feature = "cryptoauthlib-provider"))]
 #[test]
-fn sign_verify_ecc() {
-    let key_name = String::from("sign_verify_ecc");
+fn sign_verify_hash_ecc() {
+    let key_name = String::from("sign_verify_hash_ecc");
     let mut client = TestClient::new();
 
     if !client.is_operation_supported(Opcode::PsaVerifyHash) {
@@ -803,6 +803,32 @@ fn sign_verify_ecc() {
         .verify_with_ecdsa_sha256(key_name.clone(), hash, signature)
         .unwrap();
 }
+
+// More providers to be added
+#[cfg(feature = "cryptoauthlib-provider")]
+#[test]
+fn sign_verify_msg_ecc() {
+    let key_name = String::from("sign_verify_msg_ecc");
+    let mut client = TestClient::new();
+
+    if !client.is_operation_supported(Opcode::PsaVerifyMessage) {
+        return;
+    }
+
+    let msg = b"Bob wrote this message.";
+
+    client
+        .generate_ecc_key_pair_secpr1_ecdsa_sha256(key_name.clone())
+        .unwrap();
+
+    let signature = client
+        .sign_msg_with_ecdsa_sha256(key_name.clone(), msg.clone())
+        .unwrap();
+    client
+        .verify_msg_with_ecdsa_sha256(key_name.clone(), msg, signature)
+        .unwrap();
+}
+
 
 #[cfg(feature = "tpm-provider")]
 #[test]
