@@ -144,9 +144,9 @@ fn only_verify_from_internet() -> Result<()> {
 
 #[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
 #[test]
-fn prv_sign_pub_ver() -> Result<()> {
-    let private_key_name = String::from("prv_sign_pub_ver_prv");
-    let public_key_name = String::from("prv_sign_pub_ver_pub");
+fn private_sign_public_verify() -> Result<()> {
+    let private_key_name = String::from("private_sign_public_verify_prv");
+    let public_key_name = String::from("private_sign_public_verify_pub");
     let mut client = TestClient::new();
 
     if !client.is_operation_supported(Opcode::PsaVerifyHash) {

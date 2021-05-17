@@ -10,6 +10,7 @@ use parsec_interface::operations::{
 };
 use parsec_interface::requests::{Opcode, ResponseStatus, Result};
 use parsec_interface::secrecy::{ExposeSecret, Secret};
+use zeroize::Zeroizing;
 
 impl Provider {
     pub(super) fn psa_generate_key_internal(
@@ -113,7 +114,7 @@ impl Provider {
         let slot_id = self
             .key_slots
             .find_suitable_slot(&key_attributes, Some(Opcode::PsaImportKey))?;
-        let key_data = extract_raw_key(key_attributes.key_type, &op.data)?;
+        let key_data = raw_key_extract(key_attributes.key_type, &op.data)?;
 
         let atca_error_status =
             self.device
@@ -172,21 +173,19 @@ impl Provider {
         let key_attributes = self.key_info_store.get_key_attributes(&key_triple)?;
 
         match key_attributes.key_type {
-            // Type::EccPublicKey {
-            //     curve_family: EccFamily::SecpR1,
-            // }
-            // |
-            Type::EccKeyPair {
+            Type::EccPublicKey {
+                curve_family: EccFamily::SecpR1,
+            }
+            | Type::EccKeyPair {
                 curve_family: EccFamily::SecpR1,
             } => {
                 let slot_number = self.key_info_store.get_key_id(&key_triple)?;
-                let mut public_key = Vec::new();
-                let result = self.device.get_public_key(slot_number, &mut public_key);
+                let mut raw_public_key = Vec::new();
+                let result = self.device.get_public_key(slot_number, &mut raw_public_key);
                 match result {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => {
-                        Ok(psa_export_public_key::Result {
-                            data: public_key.into(),
-                        })
+                        let public_key = raw_key_wrap(&Secret::new(raw_public_key))?;
+                        Ok(psa_export_public_key::Result { data: public_key })
                     }
                     _ => {
                         error!("Export public key from cryptochip. {}", result);
@@ -199,8 +198,9 @@ impl Provider {
     }
 }
 
-// Extract a raw binary of a key in a CAL format
-fn extract_raw_key(key_type: Type, secret: &Secret<Vec<u8>>) -> Result<Secret<Vec<u8>>> {
+// Extract a raw key.
+// This is Parsec -> CALib conversion
+fn raw_key_extract(key_type: Type, secret: &Secret<Vec<u8>>) -> Result<Secret<Vec<u8>>> {
     let mut key = secret.expose_secret().to_vec();
 
     match key_type {
@@ -215,13 +215,30 @@ fn extract_raw_key(key_type: Type, secret: &Secret<Vec<u8>>) -> Result<Secret<Ve
             // ECC public key length + 1 prefixing octet (0x04):
             // 512+8 bits == 64+1 octets
             65 => {
-                // Get rid of this prefix
+                // Get rid of the prefix
                 let raw_public_key: Vec<_> = key.drain(1..).collect();
                 Ok(Secret::new(raw_public_key))
             }
             _ => Err(ResponseStatus::PsaErrorInvalidArgument),
         },
         _ => Err(ResponseStatus::PsaErrorNotSupported),
+    }
+}
+
+// Wrap the raw key with whatever Parsec wants
+// This is CALib -> Parsec conversion
+fn raw_key_wrap(secret: &Secret<Vec<u8>>) -> Result<Zeroizing<Vec<u8>>> {
+    let key = secret.expose_secret().to_vec();
+
+    match key.len() {
+        // ECC public key length
+        64 => {
+            // Add the prefix
+            let mut wrapped_public_key = vec![0x04];
+            wrapped_public_key.extend_from_slice(&key);
+            Ok(Zeroizing::new(wrapped_public_key))
+        }
+        _ => Err(ResponseStatus::PsaErrorInvalidArgument),
     }
 }
 
@@ -266,7 +283,7 @@ fn test_extract_raw_ecc_public_key() {
         0xa7, 0xb4, 0xc6, 0xe0, 0xce, 0x73, 0xac, 0xd0, 0x69, 0xd4, 0xcc, 0xa8, 0xd0, 0x55, 0xee,
         0x6c, 0x65, 0xb5, 0x71,
     ];
-    let ecc_pub_key_ext = extract_raw_key(
+    let ecc_pub_key_ext = raw_key_extract(
         Type::EccPublicKey {
             curve_family: EccFamily::SecpR1,
         },
@@ -276,5 +293,32 @@ fn test_extract_raw_ecc_public_key() {
     assert_eq!(
         ecc_pub_key.to_vec(),
         ecc_pub_key_ext.expose_secret().to_owned()
+    );
+}
+
+#[test]
+fn test_wrap_raw_ecc_public_key() {
+    let raw_ecc_pub_key: Secret<Vec<u8>> = Secret::new(
+        [
+            // 0x04,
+            0x01, 0xf7, 0x69, 0xe2, 0x40, 0x3a, 0xeb, 0x0d, 0x64, 0x3e, 0x81, 0xb8, 0xda, 0x95,
+            0xb0, 0x1c, 0x25, 0x80, 0xfe, 0xa3, 0xd3, 0xd0, 0x5b, 0x2f, 0xef, 0x6a, 0x31, 0x9c,
+            0xa9, 0xca, 0x5d, 0xe5, 0x2b, 0x4b, 0x49, 0x2c, 0x24, 0x2c, 0xef, 0xf4, 0xf2, 0x3c,
+            0xef, 0xfa, 0x08, 0xa7, 0xb4, 0xc6, 0xe0, 0xce, 0x73, 0xac, 0xd0, 0x69, 0xd4, 0xcc,
+            0xa8, 0xd0, 0x55, 0xee, 0x6c, 0x65, 0xb5, 0x71,
+        ]
+        .to_vec(),
+    );
+    let wrapped_ecc_public_key: [u8; 65] = [
+        0x04, 0x01, 0xf7, 0x69, 0xe2, 0x40, 0x3a, 0xeb, 0x0d, 0x64, 0x3e, 0x81, 0xb8, 0xda, 0x95,
+        0xb0, 0x1c, 0x25, 0x80, 0xfe, 0xa3, 0xd3, 0xd0, 0x5b, 0x2f, 0xef, 0x6a, 0x31, 0x9c, 0xa9,
+        0xca, 0x5d, 0xe5, 0x2b, 0x4b, 0x49, 0x2c, 0x24, 0x2c, 0xef, 0xf4, 0xf2, 0x3c, 0xef, 0xfa,
+        0x08, 0xa7, 0xb4, 0xc6, 0xe0, 0xce, 0x73, 0xac, 0xd0, 0x69, 0xd4, 0xcc, 0xa8, 0xd0, 0x55,
+        0xee, 0x6c, 0x65, 0xb5, 0x71,
+    ];
+    let ecc_public_key = raw_key_wrap(&raw_ecc_pub_key).unwrap();
+    assert_eq!(
+        Zeroizing::from(wrapped_ecc_public_key.to_vec()),
+        ecc_public_key
     );
 }
