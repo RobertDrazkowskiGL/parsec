@@ -1,5 +1,7 @@
 // Copyright 2019 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
+#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
+use crate::per_provider::normal_tests::import_key::ECC_PUBLIC_KEY;
 use e2e_tests::TestClient;
 use parsec_client::core::interface::operations::psa_algorithm::*;
 use parsec_client::core::interface::operations::psa_key_attributes::*;
@@ -8,8 +10,6 @@ use parsec_client::core::interface::requests::ResponseStatus;
 use parsec_client::core::interface::requests::Result;
 #[cfg(not(feature = "cryptoauthlib-provider"))]
 use picky_asn1_x509::RSAPublicKey;
-#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
-use crate::per_provider::normal_tests::import_key::ECC_PUBLIC_KEY;
 
 #[cfg(not(feature = "cryptoauthlib-provider"))]
 #[test]
@@ -124,7 +124,8 @@ fn check_public_ecc_export_format() -> Result<()> {
 
     // That should not fail if the bytes are in the expected format.
     let public_key_name = String::from("check_public_ecc_export_format_pub");
-    let _ = client.import_ecc_public_secp_r1_ecdsa_sha256_key(public_key_name.clone(), public_key)?;
+    let _ =
+        client.import_ecc_public_secp_r1_ecdsa_sha256_key(public_key_name.clone(), public_key)?;
     Ok(())
 }
 
@@ -197,11 +198,9 @@ fn check_export_ecc_public_possible() -> Result<()> {
                 copy: false,
                 derive: false,
             },
-            permitted_algorithms: Algorithm::AsymmetricSignature(
-                AsymmetricSignature::Ecdsa {
-                    hash_alg: Hash::Sha256.into(),
-                },
-            ),
+            permitted_algorithms: Algorithm::AsymmetricSignature(AsymmetricSignature::Ecdsa {
+                hash_alg: Hash::Sha256.into(),
+            }),
         },
     };
 

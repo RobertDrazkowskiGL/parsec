@@ -666,7 +666,7 @@ impl TestClient {
                     .into(),
                 },
             },
-            data
+            data,
         )
     }
 
@@ -794,7 +794,11 @@ impl TestClient {
     }
 
     /// Signs a message with an ECDSA key.
-    pub fn sign_msg_with_ecdsa_sha256(&mut self, key_name: String, msg: Vec<u8>) -> Result<Vec<u8>> {
+    pub fn sign_msg_with_ecdsa_sha256(
+        &mut self,
+        key_name: String,
+        msg: Vec<u8>,
+    ) -> Result<Vec<u8>> {
         self.sign_msg(
             key_name,
             AsymmetricSignature::Ecdsa {
@@ -802,7 +806,7 @@ impl TestClient {
             },
             msg,
         )
-    }    
+    }
 
     /// Verifies a message signature.
     pub fn verify_msg(
@@ -816,7 +820,7 @@ impl TestClient {
             .psa_verify_message(key_name, &msg, alg, &signature)
             .map_err(convert_error)
     }
-    
+
     /// Verifies a message signature made with an ECDSA key and SHA256 hash.
     pub fn verify_msg_with_ecdsa_sha256(
         &mut self,
