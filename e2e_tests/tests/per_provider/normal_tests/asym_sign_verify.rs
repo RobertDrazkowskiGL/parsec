@@ -1,5 +1,7 @@
 // Copyright 2019 Contributors to the Parsec project.
 // SPDX-License-Identifier: Apache-2.0
+#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
+use crate::per_provider::normal_tests::import_key::{ECC_PRIVATE_KEY, ECC_PUBLIC_KEY};
 use e2e_tests::TestClient;
 use parsec_client::core::interface::operations::psa_algorithm::*;
 use parsec_client::core::interface::operations::psa_key_attributes::*;
@@ -9,8 +11,6 @@ use ring::signature::{self, UnparsedPublicKey};
 #[cfg(not(feature = "cryptoauthlib-provider"))]
 use rsa::{PaddingScheme, PublicKey, RSAPublicKey};
 use sha2::{Digest, Sha256};
-#[cfg(any(feature = "mbed-crypto-provider", feature = "cryptoauthlib-provider"))]
-use crate::per_provider::normal_tests::import_key::{ECC_PRIVATE_KEY, ECC_PUBLIC_KEY};
 
 const HASH: [u8; 32] = [
     0x69, 0x3E, 0xDB, 0x1B, 0x22, 0x79, 0x03, 0xF4, 0xC0, 0xBF, 0xD6, 0x91, 0x76, 0x37, 0x84, 0xA2,
@@ -157,12 +157,21 @@ fn private_sign_public_verify() -> Result<()> {
     hasher.update(b"Bob wrote this message.");
     let hash = hasher.finalize().to_vec();
 
-    client.import_ecc_key_pair_secpr1_ecdsa_sha256(private_key_name.clone(), ECC_PRIVATE_KEY.to_vec()).unwrap();
-    client.import_ecc_public_secp_r1_ecdsa_sha256_key(public_key_name.clone(), ECC_PUBLIC_KEY.to_vec()).unwrap();
+    client
+        .import_ecc_key_pair_secpr1_ecdsa_sha256(private_key_name.clone(), ECC_PRIVATE_KEY.to_vec())
+        .unwrap();
+    client
+        .import_ecc_public_secp_r1_ecdsa_sha256_key(
+            public_key_name.clone(),
+            ECC_PUBLIC_KEY.to_vec(),
+        )
+        .unwrap();
 
-    let signature = client.sign_with_ecdsa_sha256(private_key_name,hash.clone()).unwrap();
+    let signature = client
+        .sign_with_ecdsa_sha256(private_key_name, hash.clone())
+        .unwrap();
 
-    client.verify_with_ecdsa_sha256(public_key_name,hash,signature)
+    client.verify_with_ecdsa_sha256(public_key_name, hash, signature)
 }
 
 #[cfg(not(feature = "cryptoauthlib-provider"))]
@@ -294,11 +303,9 @@ fn sign_hash_not_permitted_ecc() -> Result<()> {
                 copy: false,
                 derive: false,
             },
-            permitted_algorithms: Algorithm::AsymmetricSignature(
-                AsymmetricSignature::Ecdsa {
-                    hash_alg: Hash::Sha256.into(),
-                },
-            ),
+            permitted_algorithms: Algorithm::AsymmetricSignature(AsymmetricSignature::Ecdsa {
+                hash_alg: Hash::Sha256.into(),
+            }),
         },
     };
 
@@ -501,11 +508,9 @@ fn verify_hash_not_permitted_ecc() -> Result<()> {
                 copy: false,
                 derive: false,
             },
-            permitted_algorithms: Algorithm::AsymmetricSignature(
-                AsymmetricSignature::Ecdsa {
-                    hash_alg: Hash::Sha256.into(),
-                },
-            ),
+            permitted_algorithms: Algorithm::AsymmetricSignature(AsymmetricSignature::Ecdsa {
+                hash_alg: Hash::Sha256.into(),
+            }),
         },
     };
 
@@ -780,7 +785,11 @@ fn verify_ecc_with_ring() {
     pk.verify(message, &signature).unwrap();
 }
 
-#[cfg(any(feature = "mbed-crypto-provider", feature = "tpm-provider", feature = "cryptoauthlib-provider"))]
+#[cfg(any(
+    feature = "mbed-crypto-provider",
+    feature = "tpm-provider",
+    feature = "cryptoauthlib-provider"
+))]
 #[test]
 fn sign_verify_hash_ecc() {
     let key_name = String::from("sign_verify_hash_ecc");
@@ -806,11 +815,14 @@ fn sign_verify_hash_ecc() {
         .unwrap();
 }
 
-// More providers to be added
-#[cfg(feature = "cryptoauthlib-provider")]
+#[cfg(any(
+    feature = "mbed-crypto-provider",
+    feature = "tpm-provider",
+    feature = "cryptoauthlib-provider"
+))]
 #[test]
-fn sign_verify_msg_ecc() {
-    let key_name = String::from("sign_verify_msg_ecc");
+fn sign_verify_message_ecc() {
+    let key_name = String::from("sign_verify_message_ecc");
     let mut client = TestClient::new();
 
     if !client.is_operation_supported(Opcode::PsaVerifyMessage) {
@@ -830,7 +842,6 @@ fn sign_verify_msg_ecc() {
         .verify_msg_with_ecdsa_sha256(key_name.clone(), msg.to_vec(), signature)
         .unwrap();
 }
-
 
 #[cfg(feature = "tpm-provider")]
 #[test]
