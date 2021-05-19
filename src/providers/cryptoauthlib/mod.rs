@@ -10,7 +10,6 @@ use crate::key_info_managers::{KeyInfoManagerClient, KeyTriple};
 use crate::providers::cryptoauthlib::key_slot_storage::KeySlotStorage;
 use derivative::Derivative;
 use log::{error, trace, warn};
-use parsec_interface::operations::list_keys::KeyInfo;
 use parsec_interface::operations::list_providers::ProviderInfo;
 use parsec_interface::operations::{list_clients, list_keys};
 use parsec_interface::requests::{Opcode, ProviderId, ResponseStatus, Result};
@@ -248,20 +247,23 @@ impl Provide for Provider {
 
     fn list_keys(
         &self,
-        _app_name: ApplicationName,
+        app_name: ApplicationName,
         _op: list_keys::Operation,
     ) -> Result<list_keys::Result> {
-        trace!("list_keys ingress");
-        let keys: Vec<KeyInfo> = Vec::new();
-
-        Ok(list_keys::Result { keys })
+        Ok(list_keys::Result {
+            keys: self.key_info_store.list_keys(&app_name)?,
+        })
     }
 
     fn list_clients(&self, _op: list_clients::Operation) -> Result<list_clients::Result> {
-        trace!("list_clients ingress");
-        let clients: Vec<String> = Vec::new();
-
-        Ok(list_clients::Result { clients })
+        Ok(list_clients::Result {
+            clients: self
+                .key_info_store
+                .list_clients()?
+                .into_iter()
+                .map(|app_name| app_name.to_string())
+                .collect(),
+        })
     }
 
     fn psa_hash_compute(
