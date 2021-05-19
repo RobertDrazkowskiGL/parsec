@@ -277,8 +277,14 @@ fn raw_key_wrap(key_type: Type, secret: &Secret<Vec<u8>>) -> Result<Secret<Vec<u
         Type::Aes | Type::RawData => Ok(Secret::new(key)),
         Type::EccPublicKey {
             curve_family: EccFamily::SecpR1,
+        }
+        | Type::EccKeyPair {
+            curve_family: EccFamily::SecpR1,
         } => match key.len() {
-            // ECC public key length
+            // No support for EccKeyPair, because cryptochip does not support exporting private key.
+            // But public key can be calculated out of a private one, therefore this function
+            // looks like it supports EccKeyPair. But only a public key. See below.
+            // ECC public key length.
             64 => {
                 // Add the prefix
                 let mut wrapped_public_key = vec![0x04];

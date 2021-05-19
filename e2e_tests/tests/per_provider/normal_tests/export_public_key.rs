@@ -87,11 +87,9 @@ fn import_and_export_ecc_public_key() -> Result<()> {
     if !client.is_operation_supported(Opcode::PsaExportPublicKey) {
         return Ok(());
     }
-    println!("PsaExportPublicKey is supported");
     client.import_ecc_public_secp_r1_ecdsa_sha256_key(key_name.clone(), ECC_PUBLIC_KEY.to_vec())?;
-    println!("import succeeded");
     assert_eq!(ECC_PUBLIC_KEY.to_vec(), client.export_public_key(key_name)?);
-    println!("export succeeded");
+
     Ok(())
 }
 
