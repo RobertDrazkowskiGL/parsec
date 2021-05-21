@@ -23,6 +23,7 @@ use parsec_interface::operations::{
     psa_verify_hash, psa_verify_message,
 };
 
+mod access_keys;
 mod asym_sign;
 mod generate_random;
 mod hash;
@@ -48,6 +49,7 @@ impl Provider {
     fn new(
         key_info_store: KeyInfoManagerClient,
         atca_iface: rust_cryptoauthlib::AtcaIfaceCfg,
+        access_key_file_name: Option<String>,
     ) -> Option<Provider> {
         // This will be returned when everything succeedes
         let mut cryptoauthlib_provider: Provider;
@@ -176,11 +178,12 @@ impl Provider {
             warn!("Failed to setup opcodes for cryptoauthlib_provider");
         }
 
-        let err = cryptoauthlib_provider
-            .device
-            .set_write_encryption_key(&cryptoauthlib_provider.get_write_encrypt_key());
-        if rust_cryptoauthlib::AtcaStatus::AtcaSuccess != err {
-            warn!("Failed to setup write encryption key. Using ECC keys may not be possible.");
+        let err = cryptoauthlib_provider.set_access_keys(access_key_file_name);
+        match err {
+            Some(rust_cryptoauthlib::AtcaStatus::AtcaSuccess) => (),
+            _ => {
+                warn!("Unable to set access keys. This is dangerous for a hardware interface.");
+            }
         }
 
         Some(cryptoauthlib_provider)
@@ -217,16 +220,6 @@ impl Provider {
             }
             _ => None,
         }
-    }
-
-    // Get the deployment specific write key. With this the keys can be stored encrypted in their slots.
-    // For ECC private keys it is obligatory, for Aes it is an option.
-    fn get_write_encrypt_key(&self) -> [u8; rust_cryptoauthlib::ATCA_KEY_SIZE] {
-        [
-            0x4D, 0x50, 0x72, 0x6F, 0x20, 0x49, 0x4F, 0x20, 0x4B, 0x65, 0x79, 0x20, 0x9E, 0x31,
-            0xBD, 0x05, 0x82, 0x58, 0x76, 0xCE, 0x37, 0x90, 0xEA, 0x77, 0x42, 0x32, 0xBB, 0x51,
-            0x81, 0x49, 0x66, 0x45,
-        ]
     }
 }
 
@@ -433,6 +426,7 @@ pub struct ProviderBuilder {
     slave_address: Option<u8>,
     bus: Option<u8>,
     baud: Option<u32>,
+    access_key_file_name: Option<String>,
 }
 
 impl ProviderBuilder {
@@ -447,6 +441,7 @@ impl ProviderBuilder {
             slave_address: None,
             bus: None,
             baud: None,
+            access_key_file_name: None,
         }
     }
 
@@ -506,6 +501,13 @@ impl ProviderBuilder {
         self
     }
 
+    /// Specify access key file name
+    pub fn with_access_key_file(mut self, access_key_file_name: Option<String>) -> ProviderBuilder {
+        self.access_key_file_name = access_key_file_name;
+
+        self
+    }
+
     /// Attempt to build CryptoAuthLib Provider
     pub fn build(self) -> std::io::Result<Provider> {
         let iface_cfg = match self.iface_type {
@@ -557,6 +559,7 @@ impl ProviderBuilder {
             self.key_info_store
                 .ok_or_else(|| Error::new(ErrorKind::InvalidData, "missing key info store"))?,
             iface_cfg,
+            self.access_key_file_name,
         )
         .ok_or_else(|| {
             Error::new(
