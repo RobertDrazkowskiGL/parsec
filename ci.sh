@@ -82,6 +82,10 @@ run_key_mappings_tests() {
     RUST_BACKTRACE=1 cargo test $TEST_FEATURES --manifest-path ./e2e_tests/Cargo.toml key_mappings
 }
 
+# During end-to-end tests, Parsec is configured with the socket in /tmp/
+# Individual tests might change that, but set the default after.
+export PARSEC_SERVICE_ENDPOINT="unix:/tmp/parsec.sock"
+
 # Parse arguments
 NO_CARGO_CLEAN=
 NO_STRESS_TEST=
@@ -153,7 +157,7 @@ if [ "$PROVIDER_NAME" = "trusted-service" ] || [ "$PROVIDER_NAME" = "coverage" ]
 fi
 
 if [ "$PROVIDER_NAME" = "coverage" ]; then
-    PROVIDERS="mbed-crypto tpm pkcs11" # trusted-service not supported because of a segfault when the service stops; see: https://github.com/parallaxsecond/parsec/issues/349
+    PROVIDERS="mbed-crypto tpm pkcs11 trusted-service" # trusted-service not supported because of a segfault when the service stops; see: https://github.com/parallaxsecond/parsec/issues/349
     EXCLUDES="fuzz/*,e2e_tests/*,src/providers/cryptoauthlib/*,src/providers/trusted_service/*"
     # Install tarpaulin
     cargo install cargo-tarpaulin

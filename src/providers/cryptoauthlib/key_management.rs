@@ -237,7 +237,7 @@ impl Provider {
                     }
                 }
             }
-            _ => Err(ResponseStatus::PsaErrorNotSupported),
+            _ => Err(ResponseStatus::PsaErrorInvalidArgument),
         }
     }
 }
