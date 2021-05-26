@@ -405,7 +405,7 @@ impl Provide for Provider {
         op: psa_export_key::Operation,
     ) -> Result<psa_export_key::Result> {
         trace!("psa_export_key ingress");
-        if !self.supported_opcodes.contains(&Opcode::PsaExportPublicKey) {
+        if !self.supported_opcodes.contains(&Opcode::PsaExportKey) {
             Err(ResponseStatus::PsaErrorNotSupported)
         } else {
             self.psa_export_key_internal(app_name, op)

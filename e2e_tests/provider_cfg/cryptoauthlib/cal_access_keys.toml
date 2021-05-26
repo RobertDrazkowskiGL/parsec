@@ -1,7 +1,7 @@
 #########################################################################
 # The example configuration file with access keys.
 #
-# Note! The contents of this file may be considered sensitive from 
+# Note! The contents of this file may be considered sensitive from
 # a security point of view. Therefore this file should be stored in
 # a secure folder, where only 'parsec' user may read its contents.
 # The keys MUST be exactly the same as the ones stored in given slots.
