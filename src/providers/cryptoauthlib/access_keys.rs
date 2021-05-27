@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::Provider;
 // use parsec_interface::requests::{ResponseStatus, Result};
-use log::{error, info, warn};
+use log::{error, warn};
 use serde::Deserialize;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -49,13 +49,12 @@ impl Provider {
             }
         };
         for access_key in access_keys_container.access_keys.iter() {
-            info!("Access key: {:?}", access_key);
             if rust_cryptoauthlib::ATCA_ATECC_SLOTS_COUNT > access_key.slot {
-                let err = self.device.set_write_encryption_key(&access_key.key);
+                let err = self.device.add_access_key(access_key.slot, &access_key.key);
                 match err {
                     rust_cryptoauthlib::AtcaStatus::AtcaSuccess => (),
                     _ => error!(
-                        "set_write_encryption_key() for slot {} failed, because {}",
+                        "add_access_key() for slot {} failed, because {}",
                         access_key.slot, err
                     ),
                 }

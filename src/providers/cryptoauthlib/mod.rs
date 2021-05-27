@@ -64,7 +64,7 @@ impl Provider {
         };
 
         // ATECC is useful for non-trivial usage only when its configuration is locked
-        if !device.configuration_is_locked() {
+        if !device.is_configuration_locked() {
             error!("Error: configuration is not locked.");
             return None;
         }
